@@ -27,34 +27,34 @@ abstract class MockCases {
   // ═══════════════════════════════════════════════════════════
   // CASE 1: Akut Miyokard Enfarktüsü (Kardiyoloji - Orta)
   // ═══════════════════════════════════════════════════════════
-  static final _case1AcuteMI = const MedicalCase(
+  static const _case1AcuteMI = MedicalCase(
     id: 'case_001',
     specialty: Specialty.cardiology,
     difficulty: CaseDifficulty.medium,
-    patientProfile: const PatientProfile(
+    patientProfile: PatientProfile(
       age: 58,
       gender: 'male',
       chiefComplaint: 'Göğüs ağrısı, sol kola yayılan, 2 saattir devam ediyor',
     ),
-    vitals: const Vitals(
+    vitals: Vitals(
       bp: '160/95',
       hr: 110,
       temp: 36.8,
       rr: 22,
       spo2: 94,
     ),
-    history: const {
+    history: {
       'medicalHistory': 'Hipertansiyon (10 yıl), Tip 2 DM (5 yıl), Sigara (30 paket-yıl)',
       'medications': 'Amlodipin 10mg, Metformin 1000mg 2x1',
       'allergies': 'Bilinen alerji yok',
     },
-    physicalExam: const {
+    physicalExam: {
       'cardiovascular': 'S3 galop ritmi, juguler venöz dolgunluk yok',
       'respiratory': 'Bilateral bazalde ince raller',
       'abdomen': 'Doğal',
     },
-    availableTests: const [
-      const TestResult(
+    availableTests: [
+      TestResult(
         testId: 'lab_troponin',
         category: TestCategory.lab,
         displayName: 'Troponin I',
@@ -62,7 +62,7 @@ abstract class MockCases {
         interpretation: 'Yüksek (Normal: <0.04 ng/mL)',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_cbc',
         category: TestCategory.lab,
         displayName: 'Tam Kan Sayımı',
@@ -70,21 +70,21 @@ abstract class MockCases {
         interpretation: 'Hafif lökositoz',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'ecg_12lead',
         category: TestCategory.ecg,
         displayName: '12 Derivasyon EKG',
         findings: 'V1-V4 derivasyonlarında ST elevasyonu, reciprocal ST depresyonu II, III, aVF',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'imaging_chest_xray',
         category: TestCategory.imaging,
         displayName: 'PA Akciğer Grafisi',
         findings: 'Hafif pulmoner konjesyon bulguları, kardiyomegali yok',
         isAbnormal: false,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_ck_mb',
         category: TestCategory.lab,
         displayName: 'CK-MB',
@@ -93,9 +93,9 @@ abstract class MockCases {
         isAbnormal: true,
       ),
     ],
-    testResults: const {},
+    testResults: {},
     correctDiagnosis: 'Akut Anterior Miyokard Enfarktüsü',
-    alternativeDiagnoses: const [
+    alternativeDiagnoses: [
       'STEMI',
       'Akut MI',
       'Miyokard enfarktüsü',
@@ -105,7 +105,7 @@ abstract class MockCases {
     explanation: 'ST elevasyonu V1-V4 derivasyonlarında anterior STEMI\'yi gösterir. '
         'Troponin yüksekliği miyokard hasarını doğrular. '
         'Risk faktörleri: erkek, 58 yaş, HT, DM, sigara.',
-    keyFindings: const [
+    keyFindings: [
       'Sol kola yayılan göğüs ağrısı',
       'ST elevasyonu V1-V4',
       'Troponin I yüksek (4.8 ng/mL)',
@@ -116,34 +116,34 @@ abstract class MockCases {
   // ═══════════════════════════════════════════════════════════
   // CASE 2: Toplum Kökenli Pnömoni (Pulmonoloji - Kolay)
   // ═══════════════════════════════════════════════════════════
-  static final _case2Pneumonia = const MedicalCase(
+  static const _case2Pneumonia = MedicalCase(
     id: 'case_002',
     specialty: Specialty.pulmonology,
     difficulty: CaseDifficulty.easy,
-    patientProfile: const PatientProfile(
+    patientProfile: PatientProfile(
       age: 72,
       gender: 'female',
       chiefComplaint: 'Öksürük, ateş, nefes darlığı, 3 gündür',
     ),
-    vitals: const Vitals(
+    vitals: Vitals(
       bp: '130/80',
       hr: 98,
       temp: 38.9,
       rr: 26,
       spo2: 91,
     ),
-    history: const {
+    history: {
       'medicalHistory': 'KOAH (15 yıl), Osteoporoz',
       'medications': 'Tiotropium inhaler, Kalsiyum-D vitamini',
       'allergies': 'Penisilin alerjisi',
     },
-    physicalExam: const {
+    physicalExam: {
       'respiratory': 'Sağ alt lobda bronşiyal solunum sesleri, krepitan raller',
       'cardiovascular': 'Ritmik, ek ses yok',
       'abdomen': 'Doğal',
     },
-    availableTests: const [
-      const TestResult(
+    availableTests: [
+      TestResult(
         testId: 'lab_cbc',
         category: TestCategory.lab,
         displayName: 'Tam Kan Sayımı',
@@ -151,7 +151,7 @@ abstract class MockCases {
         interpretation: 'Lökositoz, hafif anemi',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_crp',
         category: TestCategory.lab,
         displayName: 'CRP',
@@ -159,14 +159,14 @@ abstract class MockCases {
         interpretation: 'Belirgin yüksek (Normal: <5 mg/L)',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'imaging_chest_xray',
         category: TestCategory.imaging,
         displayName: 'PA Akciğer Grafisi',
         findings: 'Sağ alt lobda konsolidasyon, hava bronkogramları mevcut',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_blood_gas',
         category: TestCategory.lab,
         displayName: 'Arter Kan Gazı',
@@ -175,9 +175,9 @@ abstract class MockCases {
         isAbnormal: true,
       ),
     ],
-    testResults: const {},
+    testResults: {},
     correctDiagnosis: 'Toplum Kökenli Pnömoni',
-    alternativeDiagnoses: const [
+    alternativeDiagnoses: [
       'Pnömoni',
       'Zatürre',
       'Akciğer enfeksiyonu',
@@ -187,7 +187,7 @@ abstract class MockCases {
     explanation: 'Ateş, öksürük, nefes darlığı triadı ve sağ alt lobda '
         'konsolidasyon bulguları pnömoniyi destekler. '
         'KOAH zemini riski artırır. Penisilin alerjisi tedavi seçimini etkiler.',
-    keyFindings: const [
+    keyFindings: [
       'Ateş 38.9°C + produktif öksürük',
       'SpO2 91% — hipoksemi',
       'Sağ alt lobda konsolidasyon (röntgen)',
@@ -198,34 +198,34 @@ abstract class MockCases {
   // ═══════════════════════════════════════════════════════════
   // CASE 3: Akut Apandisit (Cerrahi - Kolay)
   // ═══════════════════════════════════════════════════════════
-  static final _case3Appendicitis = const MedicalCase(
+  static const _case3Appendicitis = MedicalCase(
     id: 'case_003',
     specialty: Specialty.surgery,
     difficulty: CaseDifficulty.easy,
-    patientProfile: const PatientProfile(
+    patientProfile: PatientProfile(
       age: 24,
       gender: 'male',
       chiefComplaint: 'Karın ağrısı, göbek çevresinde başlayıp sağ alt kadrana yerleşen, 12 saattir',
     ),
-    vitals: const Vitals(
+    vitals: Vitals(
       bp: '125/78',
       hr: 92,
       temp: 38.2,
       rr: 18,
       spo2: 98,
     ),
-    history: const {
+    history: {
       'medicalHistory': 'Bilinen hastalık yok',
       'medications': 'Kullandığı ilaç yok',
       'allergies': 'Bilinen alerji yok',
     },
-    physicalExam: const {
+    physicalExam: {
       'abdomen': 'McBurney noktasında hassasiyet, defans (+), Rovsing bulgusu (+), Psoas testi (+)',
       'cardiovascular': 'Doğal',
       'respiratory': 'Doğal',
     },
-    availableTests: const [
-      const TestResult(
+    availableTests: [
+      TestResult(
         testId: 'lab_cbc',
         category: TestCategory.lab,
         displayName: 'Tam Kan Sayımı',
@@ -233,7 +233,7 @@ abstract class MockCases {
         interpretation: 'Lökositoz, nötrofili',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_crp',
         category: TestCategory.lab,
         displayName: 'CRP',
@@ -241,14 +241,14 @@ abstract class MockCases {
         interpretation: 'Yüksek (Normal: <5 mg/L)',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'imaging_usg',
         category: TestCategory.imaging,
         displayName: 'Batın USG',
         findings: 'Apendiks çapı 12mm, komprese edilemiyor, periappendiküler yağlı doku inflamasyonu',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_urinalysis',
         category: TestCategory.lab,
         displayName: 'Tam İdrar Tahlili',
@@ -257,9 +257,9 @@ abstract class MockCases {
         isAbnormal: false,
       ),
     ],
-    testResults: const {},
+    testResults: {},
     correctDiagnosis: 'Akut Apandisit',
-    alternativeDiagnoses: const [
+    alternativeDiagnoses: [
       'Apandisit',
       'Appendisit',
       'Akut appendisit',
@@ -267,7 +267,7 @@ abstract class MockCases {
     explanation: 'Klasik göç eden ağrı paterni (periumbilikal → sağ alt kadran), '
         'McBurney hassasiyeti, defans ve pozitif Rovsing/Psoas testleri '
         'akut apandisiti kuvvetle destekler. USG bulguları doğrular.',
-    keyFindings: const [
+    keyFindings: [
       'Göç eden karın ağrısı (göbek → sağ alt kadran)',
       'McBurney hassasiyeti + defans',
       'Rovsing ve Psoas testleri pozitif',
@@ -278,34 +278,34 @@ abstract class MockCases {
   // ═══════════════════════════════════════════════════════════
   // CASE 4: Bakteriyel Menenjit (Nöroloji - Zor)
   // ═══════════════════════════════════════════════════════════
-  static final _case4Meningitis = const MedicalCase(
+  static const _case4Meningitis = MedicalCase(
     id: 'case_004',
     specialty: Specialty.neurology,
     difficulty: CaseDifficulty.hard,
-    patientProfile: const PatientProfile(
+    patientProfile: PatientProfile(
       age: 19,
       gender: 'female',
       chiefComplaint: 'Şiddetli baş ağrısı, ateş, ense sertliği, 1 gündür',
     ),
-    vitals: const Vitals(
+    vitals: Vitals(
       bp: '105/65',
       hr: 118,
       temp: 39.5,
       rr: 24,
       spo2: 96,
     ),
-    history: const {
+    history: {
       'medicalHistory': 'Bilinen hastalık yok. Üniversite yurdu öğrencisi.',
       'medications': 'Oral kontraseptif',
       'allergies': 'Bilinen alerji yok',
     },
-    physicalExam: const {
+    physicalExam: {
       'neurological': 'Ense sertliği (+), Kernig (+), Brudzinski (+), fotofobi, GKS: 14 (E4V4M6)',
       'skin': 'Gövde ve ekstremitelerde peteşiyal döküntü',
       'cardiovascular': 'Taşikardik, dolgun değil',
     },
-    availableTests: const [
-      const TestResult(
+    availableTests: [
+      TestResult(
         testId: 'lab_cbc',
         category: TestCategory.lab,
         displayName: 'Tam Kan Sayımı',
@@ -313,7 +313,7 @@ abstract class MockCases {
         interpretation: 'Belirgin lökositoz, trombositopeni',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_crp',
         category: TestCategory.lab,
         displayName: 'CRP',
@@ -321,7 +321,7 @@ abstract class MockCases {
         interpretation: 'Çok yüksek (Normal: <5 mg/L)',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'special_lumbar',
         category: TestCategory.special,
         displayName: 'Lomber Ponksiyon (BOS)',
@@ -329,14 +329,14 @@ abstract class MockCases {
         interpretation: 'Bakteriyel menenjit ile uyumlu — yüksek protein, düşük glukoz, nötrofil hakimiyeti',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'imaging_ct_head',
         category: TestCategory.imaging,
         displayName: 'Beyin BT',
         findings: 'Yer kaplayan lezyon yok, beyin ödemi bulgusu yok, LP için kontrendikasyon yok',
         isAbnormal: false,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_lactate',
         category: TestCategory.lab,
         displayName: 'Laktat',
@@ -345,9 +345,9 @@ abstract class MockCases {
         isAbnormal: true,
       ),
     ],
-    testResults: const {},
+    testResults: {},
     correctDiagnosis: 'Bakteriyel Menenjit',
-    alternativeDiagnoses: const [
+    alternativeDiagnoses: [
       'Menenjit',
       'Akut bakteriyel menenjit',
       'Meningokok menenjiti',
@@ -357,7 +357,7 @@ abstract class MockCases {
         'Peteşiyal döküntü meningokoku düşündürür. '
         'BOS bulguları (düşük glukoz, yüksek protein, nötrofil) '
         'bakteriyel menenjiti doğrular. Acil antibiyotik gerekli.',
-    keyFindings: const [
+    keyFindings: [
       'Ateş + ense sertliği + bilinç değişikliği (triad)',
       'Peteşiyal döküntü — meningokok?',
       'BOS: Glukoz düşük (18), protein yüksek (280), nötrofil hakim',
@@ -368,34 +368,34 @@ abstract class MockCases {
   // ═══════════════════════════════════════════════════════════
   // CASE 5: Pulmoner Emboli (Acil - Zor)
   // ═══════════════════════════════════════════════════════════
-  static final _case5Pulmonaryembolism = const MedicalCase(
+  static const _case5Pulmonaryembolism = MedicalCase(
     id: 'case_005',
     specialty: Specialty.emergency,
     difficulty: CaseDifficulty.hard,
-    patientProfile: const PatientProfile(
+    patientProfile: PatientProfile(
       age: 35,
       gender: 'female',
       chiefComplaint: 'Ani başlayan nefes darlığı, plöritik göğüs ağrısı, 4 saattir',
     ),
-    vitals: const Vitals(
+    vitals: Vitals(
       bp: '100/60',
       hr: 125,
       temp: 37.4,
       rr: 28,
       spo2: 88,
     ),
-    history: const {
+    history: {
       'medicalHistory': 'Oral kontraseptif kullanımı (3 yıl). 2 hafta önce İstanbul-New York uçuşu.',
       'medications': 'Oral kontraseptif',
       'allergies': 'Bilinen alerji yok',
     },
-    physicalExam: const {
+    physicalExam: {
       'respiratory': 'Takipneik, bilateral solunum sesleri azalmış sağda daha belirgin',
       'cardiovascular': 'Taşikardik, S2 sert, sağ ventrikül heave',
       'extremities': 'Sağ baldırda şişlik ve hassasiyet (DVT?)',
     },
-    availableTests: const [
-      const TestResult(
+    availableTests: [
+      TestResult(
         testId: 'lab_d_dimer',
         category: TestCategory.lab,
         displayName: 'D-dimer',
@@ -403,7 +403,7 @@ abstract class MockCases {
         interpretation: 'Çok yüksek (Normal: <0.5 mg/L FEU)',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_blood_gas',
         category: TestCategory.lab,
         displayName: 'Arter Kan Gazı',
@@ -411,21 +411,21 @@ abstract class MockCases {
         interpretation: 'Hipoksemi, hipokapni, respiratuar alkaloz',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'imaging_ct_angio',
         category: TestCategory.imaging,
         displayName: 'BT Pulmoner Anjiyografi',
         findings: 'Sağ ana pulmoner arterde ve sağ alt lob segmental arterlerde dolma defekti — masif PE',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'ecg_12lead',
         category: TestCategory.ecg,
         displayName: '12 Derivasyon EKG',
         findings: 'Sinüs taşikardisi, S1Q3T3 paterni, sağ aks deviasyonu',
         isAbnormal: true,
       ),
-      const TestResult(
+      TestResult(
         testId: 'lab_bnp',
         category: TestCategory.lab,
         displayName: 'BNP',
@@ -434,9 +434,9 @@ abstract class MockCases {
         isAbnormal: true,
       ),
     ],
-    testResults: const {},
+    testResults: {},
     correctDiagnosis: 'Masif Pulmoner Emboli',
-    alternativeDiagnoses: const [
+    alternativeDiagnoses: [
       'Pulmoner emboli',
       'PE',
       'Pulmoner tromboemboli',
@@ -445,7 +445,7 @@ abstract class MockCases {
     explanation: 'Ani nefes darlığı + plöritik ağrı + risk faktörleri (OKS, uzun uçuş). '
         'Wells skoru yüksek. BT anjiyoda sağ ana pulmoner arterde dolma defekti '
         'masif PE\'yi doğrular. S1Q3T3 klasik ama nadir EKG bulgusu.',
-    keyFindings: const [
+    keyFindings: [
       'Ani nefes darlığı + plöritik ağrı',
       'Risk: OKS + uzun uçuş (immobilizasyon)',
       'SpO2 88% + taşikardi 125',
