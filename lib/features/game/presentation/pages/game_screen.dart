@@ -24,29 +24,42 @@ import '../widgets/timer_widget.dart';
 /// GamePlaying → vaka + timer + test + tanı
 /// GameCaseResult → doğru/yanlış feedback
 /// GameOver → final skor
-class GameScreen extends ConsumerWidget {
+class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GameScreen> createState() => _GameScreenState();
+}
+
+class _GameScreenState extends ConsumerState<GameScreen> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final gameState = ref.watch(gameNotifierProvider);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: SafeArea(
-        child: _buildContent(context, ref, gameState),
+        child: _buildContent(context, gameState),
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, GameState state) {
+  Widget _buildContent(BuildContext context, GameState state) {
     // NEDEN: State pattern — her state kendi UI'ını render eder.
-    if (state is GameInitial) return _buildInitialScreen(ref);
+    if (state is GameInitial) return _buildInitialScreen();
     if (state is GameLoading) return _buildLoadingScreen();
-    if (state is GamePlaying) return _buildPlayingScreen(context, ref, state);
-    if (state is GameCaseResult) return _buildCaseResultScreen(ref, state);
-    if (state is GameOver) return _buildGameOverScreen(ref, state);
-    if (state is GameError) return _buildErrorScreen(ref, state);
+    if (state is GamePlaying) return _buildPlayingScreen(context, state);
+    if (state is GameCaseResult) return _buildCaseResultScreen(state);
+    if (state is GameOver) return _buildGameOverScreen(state);
+    if (state is GameError) return _buildErrorScreen(state);
 
     return const SizedBox.shrink();
   }
@@ -55,7 +68,7 @@ class GameScreen extends ConsumerWidget {
   // INITIAL — "Oyna" butonu
   // ═══════════════════════════════════════════════════════════
 
-  Widget _buildInitialScreen(WidgetRef ref) {
+  Widget _buildInitialScreen() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -135,7 +148,6 @@ class GameScreen extends ConsumerWidget {
 
   Widget _buildPlayingScreen(
     BuildContext context,
-    WidgetRef ref,
     GamePlaying state,
   ) {
     final currentCase = state.currentCase;
@@ -165,7 +177,7 @@ class GameScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
 
                   // NEDEN: Test isteme butonu.
-                  _buildTestSection(ref, state),
+                  _buildTestSection(state),
                   const SizedBox(height: 12),
 
                   // NEDEN: Açılmış test sonuçları.
@@ -177,7 +189,7 @@ class GameScreen extends ConsumerWidget {
           ),
 
           // NEDEN: Alt kısım — tanı girişi, sabit kalır.
-          _buildDiagnosisInput(context, ref),
+          _buildDiagnosisInput(context),
           const SizedBox(height: 8),
         ],
       ),
@@ -226,7 +238,7 @@ class GameScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTestSection(WidgetRef ref, GamePlaying state) {
+  Widget _buildTestSection(GamePlaying state) {
     final currentCase = state.currentCase;
     if (currentCase == null) return const SizedBox.shrink();
 
@@ -382,9 +394,7 @@ class GameScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDiagnosisInput(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
-
+  Widget _buildDiagnosisInput(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -395,7 +405,7 @@ class GameScreen extends ConsumerWidget {
         children: [
           Expanded(
             child: TextField(
-              controller: controller,
+              controller: _controller,
               style: const TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Tanınızı yazın...',
@@ -428,7 +438,7 @@ class GameScreen extends ConsumerWidget {
             width: 48,
             child: ElevatedButton(
               onPressed: () {
-                final text = controller.text.trim();
+                final text = _controller.text.trim();
                 if (text.isNotEmpty) {
                   ref
                       .read(gameNotifierProvider.notifier)
@@ -454,7 +464,7 @@ class GameScreen extends ConsumerWidget {
   // CASE RESULT — Doğru/Yanlış feedback
   // ═══════════════════════════════════════════════════════════
 
-  Widget _buildCaseResultScreen(WidgetRef ref, GameCaseResult state) {
+  Widget _buildCaseResultScreen(GameCaseResult state) {
     final color = state.isCorrect ? AppColors.success : AppColors.error;
     final icon = state.isCorrect ? Icons.check_circle : Icons.cancel;
     final text = state.isCorrect ? 'Doğru Tanı!' : 'Yanlış Tanı';
@@ -533,7 +543,7 @@ class GameScreen extends ConsumerWidget {
   // GAME OVER — Final skor
   // ═══════════════════════════════════════════════════════════
 
-  Widget _buildGameOverScreen(WidgetRef ref, GameOver state) {
+  Widget _buildGameOverScreen(GameOver state) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -625,7 +635,7 @@ class GameScreen extends ConsumerWidget {
   // ERROR
   // ═══════════════════════════════════════════════════════════
 
-  Widget _buildErrorScreen(WidgetRef ref, GameError state) {
+  Widget _buildErrorScreen(GameError state) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
