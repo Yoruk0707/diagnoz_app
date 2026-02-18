@@ -1,19 +1,19 @@
-/// ═══════════════════════════════════════════════════════════════
-/// DiagnozApp - input_validator.dart
-/// ═══════════════════════════════════════════════════════════════
-///
-/// ⚠️ GÜVENLİK KRİTİK DOSYA
-///
-/// "AI kodunun %90'ında input validation eksik."
-/// — vcsecurity.md § 2
-///
-/// Her kullanıcı girişi buradan geçmeli.
-/// Backend validation'ı REPLACEMAZ, sadece UX iyileştirir
-/// ve gereksiz network call'ları engeller.
-///
-/// Referans: vcsecurity.md § 2 (input validation)
-///           masterplan.md § scoring formula
-/// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// DiagnozApp - input_validator.dart
+// ═══════════════════════════════════════════════════════════════
+//
+// GÜVENLİK KRİTİK DOSYA
+//
+// "AI kodunun %90'ında input validation eksik."
+// — vcsecurity.md § 2
+//
+// Her kullanıcı girişi buradan geçmeli.
+// Backend validation'ı REPLACEMAZ, sadece UX iyileştirir
+// ve gereksiz network call'ları engeller.
+//
+// Referans: vcsecurity.md § 2 (input validation)
+//           masterplan.md § scoring formula
+// ═══════════════════════════════════════════════════════════════
 
 abstract class InputValidator {
   // ─────────────────────────────────────────────────────────────

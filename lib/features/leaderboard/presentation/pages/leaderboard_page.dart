@@ -18,7 +18,7 @@ class LeaderboardPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.leaderboard_rounded,
               size: 80,
               color: AppColors.primary,

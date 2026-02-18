@@ -71,7 +71,7 @@ class CaseCardWidget extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: _getDifficultyColor().withOpacity(0.2),
+            color: _getDifficultyColor().withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
@@ -192,7 +192,7 @@ class CaseCardWidget extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(color: color.withOpacity(0.7), fontSize: 10),
+            style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 10),
           ),
           const SizedBox(height: 2),
           Text(

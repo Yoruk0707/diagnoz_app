@@ -1,16 +1,16 @@
-/// ═══════════════════════════════════════════════════════════════
-/// DiagnozApp - app_strings.dart
-/// ═══════════════════════════════════════════════════════════════
-///
-/// Tüm kullanıcıya görünen metinler tek merkezde.
-///
-/// NEDEN: Hardcoded string'ler yerine tek dosya yönetimi.
-/// İleride l10n/intl entegrasyonu için hazır altyapı.
-///
-/// KURAL: Kod/değişkenler İNGİLİZCE, UI metinleri TÜRKÇE.
-///
-/// Referans: lessons_learned.md § 9 String Management
-/// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// DiagnozApp - app_strings.dart
+// ═══════════════════════════════════════════════════════════════
+//
+// Tüm kullanıcıya görünen metinler tek merkezde.
+//
+// NEDEN: Hardcoded string'ler yerine tek dosya yönetimi.
+// İleride l10n/intl entegrasyonu için hazır altyapı.
+//
+// KURAL: Kod/değişkenler İNGİLİZCE, UI metinleri TÜRKÇE.
+//
+// Referans: lessons_learned.md § 9 String Management
+// ═══════════════════════════════════════════════════════════════
 
 /// Kullanıcıya görünen tüm metinler.
 ///

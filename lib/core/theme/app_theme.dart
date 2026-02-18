@@ -107,14 +107,13 @@ abstract class AppTheme {
       // ─────────────────────────────────────────────────────────
 
       // NEDEN: Subtle splash effect for dark theme - not too bright
-      // TODO(flutter-upgrade): Replace withOpacity with withValues when min SDK >= 3.27
-      splashColor: AppColors.primary.withOpacity(0.1),
-      highlightColor: AppColors.primary.withOpacity(0.05),
+      splashColor: AppColors.primary.withValues(alpha: 0.1),
+      highlightColor: AppColors.primary.withValues(alpha: 0.05),
 
       // NEDEN: Text selection colors (TextField text selection)
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: AppColors.primary,
-        selectionColor: AppColors.primary.withOpacity(0.3),
+        selectionColor: AppColors.primary.withValues(alpha: 0.3),
         selectionHandleColor: AppColors.primary,
       ),
     );
@@ -503,7 +502,7 @@ abstract class AppTheme {
   /// - selectedItemColor / unselectedItemColor control BOTH icon and label colors
   /// - labelStyle only defines font (no color) to avoid conflicts
   static BottomNavigationBarThemeData _buildBottomNavigationBarTheme() {
-    return BottomNavigationBarThemeData(
+    return const BottomNavigationBarThemeData(
       // NEDEN: ui_ux_design_clean.md § 2.5 - Level 2: 2dp
       elevation: AppElevation.bottomNav,
 
@@ -521,11 +520,11 @@ abstract class AppTheme {
       selectedLabelStyle: _labelSmallBase,
       unselectedLabelStyle: _labelSmallBase,
 
-      selectedIconTheme: const IconThemeData(
+      selectedIconTheme: IconThemeData(
         size: AppDimensions.iconDefault,
         // NEDEN: Color inherited from selectedItemColor
       ),
-      unselectedIconTheme: const IconThemeData(
+      unselectedIconTheme: IconThemeData(
         size: AppDimensions.iconDefault,
         // NEDEN: Color inherited from unselectedItemColor
       ),
@@ -635,7 +634,7 @@ abstract class AppTheme {
   /// - labelColor / unselectedLabelColor control text colors
   /// - labelStyle only defines font (no color) to avoid conflicts
   static TabBarThemeData _buildTabBarTheme() {
-    return TabBarThemeData(
+    return const TabBarThemeData(
       // NEDEN: Single source of truth for label colors
       labelColor: AppColors.primary,
       unselectedLabelColor: AppColors.textTertiary,

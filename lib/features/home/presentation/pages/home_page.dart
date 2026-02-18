@@ -18,7 +18,7 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.local_hospital_rounded,
               size: 80,
               color: AppColors.primary,

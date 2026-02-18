@@ -52,7 +52,7 @@ class FirebaseAuthRepository implements AuthRepository {
       // 90s failsafe ile hang'i önlüyoruz (Senaca security review).
       final timeoutTimer = Timer(const Duration(seconds: 90), () {
         if (!completer.isCompleted) {
-          completer.complete(Left(const ServerFailure(
+          completer.complete(const Left(ServerFailure(
             'İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.',
             code: 'verification-timeout',
           )));

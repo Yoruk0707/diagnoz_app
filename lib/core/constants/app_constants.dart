@@ -1,14 +1,14 @@
-/// ═══════════════════════════════════════════════════════════════
-/// DiagnozApp - app_constants.dart
-/// ═══════════════════════════════════════════════════════════════
-///
-/// Uygulama genelinde kullanılan sabit değerler.
-///
-/// NEDEN: Magic number'lar kod içinde dağılmasın,
-/// tek merkezden yönetilsin.
-///
-/// Referans: masterplan.md § Game Mechanics, vcsecurity.md § 3
-/// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// DiagnozApp - app_constants.dart
+// ═══════════════════════════════════════════════════════════════
+//
+// Uygulama genelinde kullanılan sabit değerler.
+//
+// NEDEN: Magic number'lar kod içinde dağılmasın,
+// tek merkezden yönetilsin.
+//
+// Referans: masterplan.md § Game Mechanics, vcsecurity.md § 3
+// ═══════════════════════════════════════════════════════════════
 
 /// Oyun sabitleri, rate limit'ler ve uygulama yapılandırması.
 ///

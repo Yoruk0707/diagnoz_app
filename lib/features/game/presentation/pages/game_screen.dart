@@ -340,9 +340,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     color: (test.isAbnormal
                             ? AppColors.errorContainer
                             : AppColors.successContainer)
-                        .withOpacity(0.5),
+                        .withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: color.withOpacity(0.3)),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
