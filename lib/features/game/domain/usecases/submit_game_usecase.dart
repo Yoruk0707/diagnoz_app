@@ -42,6 +42,10 @@ class SubmitGameUsecase {
   /// Client-side manipulation tespiti (score/time tampering).
   /// vcguide.md § Edge Case 2: "timeLeft can be 999 (manipulation)"
   Future<Either<Failure, void>> call(GameSession session) async {
+    debugPrint('[SUBMIT] usecase called — '
+        'gameId=${session.id} status=${session.status} '
+        'totalScore=${session.totalScore}');
+
     // ─── 1. Oyun durumu kontrolü ───
     // NEDEN: Sadece tamamlanmış veya timeout olmuş oyunlar kaydedilir.
     // inProgress veya abandoned oyunlar henüz bitmemiş — submit edilemez.

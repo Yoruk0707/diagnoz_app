@@ -10,6 +10,7 @@
 //           CLAUDE.md § Leaderboard Race Condition Prevention
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../domain/entities/game_session.dart';
@@ -124,6 +125,10 @@ class FirestoreGameDatasource {
     required String? displayName,
     required String? university,
   }) async {
+    debugPrint('[GAME-DS] submitGame batch write start — '
+        'gameId=${session.id} userId=$userId '
+        'totalScore=${session.totalScore} cases=${session.casesCompleted}');
+
     final batch = _firestore.batch();
 
     // ─── 1. Game document'ı yaz ───
@@ -132,18 +137,27 @@ class FirestoreGameDatasource {
     final gameRef = _gamesRef.doc(session.id);
     batch.set(gameRef, GameModel.toFirestore(session, userId: userId));
 
-    // ─── 2. User stats güncelle (atomic) ───
+    // ─── 2. User stats güncelle (atomic + merge) ───
     // NEDEN: FieldValue.increment() race condition önler.
     // vcguide.md § Edge Case 4: concurrent score update'ler kaybolmaz.
+    // set+merge kullanılır çünkü user doc henüz olmayabilir
+    // (Cloud Function auth.onCreate henüz deploy edilmemiş olabilir).
+    // merge:true → doc yoksa oluşturur, varsa sadece verilen field'ları günceller.
+    // NEDEN: set+merge + dot notation — doc yoksa oluşturur, varsa sadece
+    // belirtilen nested field'ları günceller. Nested map kullanılırsa
+    // merge:true bile olsa stats objesinin TAMAMI overwrite olur
+    // (bestScore vb. kaybolur). Dot notation bunu önler.
     final userRef = _firestore.collection('users').doc(userId);
-    batch.update(userRef, {
-      'stats.totalGamesPlayed': FieldValue.increment(1),
-      'stats.totalCasesSolved': FieldValue.increment(session.casesCompleted),
-      'stats.weeklyScore': FieldValue.increment(session.totalScore),
-      'stats.monthlyScore': FieldValue.increment(session.totalScore),
-      // NEDEN: bestScore güncelleme batch'te yapılamaz (max karşılaştırma gerekir).
-      // Bu alan Cloud Function'da veya ayrı transaction'da güncellenecek.
-    });
+    batch.set(
+      userRef,
+      {
+        'stats.totalGamesPlayed': FieldValue.increment(1),
+        'stats.totalCasesSolved': FieldValue.increment(session.casesCompleted),
+        'stats.weeklyScore': FieldValue.increment(session.totalScore),
+        'stats.monthlyScore': FieldValue.increment(session.totalScore),
+      },
+      SetOptions(merge: true),
+    );
 
     // ─── 3. Weekly leaderboard güncelle (atomic + merge) ───
     // NEDEN: Denormalized leaderboard — read maliyetini %50 düşürür.

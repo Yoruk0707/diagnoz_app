@@ -197,6 +197,9 @@ class FirebaseGameRepository implements GameRepository {
   Future<Either<Failure, void>> submitGame(GameSession session) async {
     try {
       final userId = _requireAuthUserId();
+      debugPrint('[GAME-REPO] submitGame called — '
+          'gameId=${session.id} userId=$userId '
+          'status=${session.status} totalScore=${session.totalScore}');
 
       // NEDEN: Duplicate submit koruması — vcguide.md § Edge Case 5.
       // Zaten completed olan oyun tekrar submit edilemez.

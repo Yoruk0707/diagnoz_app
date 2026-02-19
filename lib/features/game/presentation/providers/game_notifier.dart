@@ -309,6 +309,11 @@ class GameNotifier extends StateNotifier<GameState> {
   ///
   /// CLAUDE.md § Error Handling: "Wrap ALL async operations in try-catch"
   Future<void> _submitGameToFirestore(GameSession session) async {
+    debugPrint('[GAME-NOTIFIER] _submitGameToFirestore called — '
+        'gameId=${session.id} status=${session.status} '
+        'totalScore=${session.totalScore} '
+        'casesCompleted=${session.casesCompleted}');
+
     // NEDEN: Duplicate submit koruması — flag kontrolü.
     // Bu method _handleTimeOut ve submitDiagnosis'ten çağrılabilir.
     if (_isSubmittingToFirestore) return;
