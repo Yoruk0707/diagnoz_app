@@ -1,0 +1,107 @@
+// DiagnozApp — Firestore Security Rules
+//
+// NEDEN: database_schema.md § Security bölümünden + security review düzeltmeleri.
+// CLAUDE.md § Firebase Security Rules ile uyumlu.
+//
+// Kural özeti:
+//   users:              get=auth, list=false, write=owner only, delete=never
+//   games:              read=owner, create=owner+validation, update/delete=never
+//   cases:              read=auth, write=never (admin via Cloud Functions)
+//   leaderboard_weekly: read=auth, write=never (Cloud Functions only)
+//   leaderboard_monthly: read=auth, write=never (Cloud Functions only)
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper Functions ───
+
+    // NEDEN: DRY — auth kontrolü tekrar tekrar yazılmasın.
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // NEDEN: Sadece kendi verini değiştirebilsin (userId eşleşmesi).
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    // NEDEN: Kullanıcı dokümanında izin verilen field'lar.
+    // Allowlist dışındaki field'lar (ör. isAdmin) client'tan yazılamaz.
+    function isValidUserFields() {
+      return request.resource.data.keys().hasOnly([
+        'displayName', 'university', 'phoneNumber',
+        'createdAt', 'updatedAt',
+        'gamesPlayed', 'totalScore', 'weeklyScore', 'monthlyScore'
+      ]);
+    }
+
+    // NEDEN: Oyun dokümanında izin verilen field'lar.
+    // Client manipülasyonunu sınırla — sadece bilinen field'lar.
+    function isValidGameFields() {
+      return request.resource.data.keys().hasOnly([
+        'userId', 'mode', 'status', 'startTime', 'endTime',
+        'totalScore', 'casesPlayed', 'caseResults',
+        'passesLeft', 'passesUsed'
+      ]);
+    }
+
+    // ─── users/{userId} ───
+    // NEDEN: get = auth (tek profil okuma, leaderboard'da displayName için).
+    // list = false (tüm kullanıcıları listeleme engeli — enumeration koruması).
+    // Anonim scraping engellenir: isAuth() ile.
+    // Field allowlist: isValidUserFields() ile bilinmeyen field yazılamaz.
+    // Delete kapalı — hesap silme Cloud Functions'dan yapılır.
+    match /users/{userId} {
+      allow get: if isAuth();
+      allow list: if false;
+      allow create: if isAuth() && isOwner(userId) && isValidUserFields();
+      allow update: if isAuth() && isOwner(userId) && isValidUserFields();
+      allow delete: if false;
+    }
+
+    // ─── games/{gameId} ───
+    // NEDEN: Oyun geçmişi sadece sahibi okuyabilir (gizlilik).
+    // Create: auth + userId eşleşmesi + field allowlist + kaba validation.
+    // totalScore 0-60 arası, casesPlayed 0-5 arası.
+    // Update/delete kapalı — oyun sonuçları immutable (database_schema.md).
+    match /games/{gameId} {
+      allow read: if isAuth() && isOwner(resource.data.userId);
+      allow create: if isAuth()
+        && isOwner(request.resource.data.userId)
+        && isValidGameFields()
+        && request.resource.data.totalScore >= 0
+        && request.resource.data.totalScore <= 60
+        && request.resource.data.casesPlayed >= 0
+        && request.resource.data.casesPlayed <= 5;
+      allow update, delete: if false;
+    }
+
+    // ─── cases/{caseId} ───
+    // NEDEN: Vakalar sadece auth kullanıcılar okuyabilir (scraping azaltma).
+    // Write tamamen kapalı — sadece admin Cloud Functions ile ekler.
+    // TODO Sprint 5: correctDiagnosis alanını cases_private koleksiyonuna taşı.
+    // Şu an client correctDiagnosis'i görebilir — Sprint 5'te ayrı koleksiyon.
+    match /cases/{caseId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+
+    // ─── leaderboard_weekly/{docId} ───
+    // NEDEN: Sadece auth kullanıcılar okuyabilir (anonim scraping engeli).
+    // Write kapalı — FieldValue.increment ile güncelleme
+    // sadece Cloud Functions (veya client batch write) üzerinden.
+    // Production'da Cloud Functions'a taşındığında write tamamen kapatılır.
+    match /leaderboard_weekly/{docId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+
+    // ─── leaderboard_monthly/{docId} ───
+    // NEDEN: leaderboard_weekly ile aynı kurallar.
+    match /leaderboard_monthly/{docId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+  }
+}
