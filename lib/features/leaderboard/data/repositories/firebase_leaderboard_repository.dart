@@ -351,23 +351,8 @@ class FirebaseLeaderboardRepository implements LeaderboardRepository {
     return null;
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // WEEK NUMBER UTILITY
-  // ═══════════════════════════════════════════════════════════
-
-  /// ISO 8601 hafta numarası hesapla.
-  ///
-  /// NEDEN: Firestore'daki weekNumber field'ı ISO 8601 standardında.
-  /// Dart'ta built-in week number yok, manuel hesaplama gerekli.
-  /// firestore_game_datasource.dart'taki ile aynı algoritma.
-  static int getIsoWeekNumber(DateTime date) {
-    // NEDEN: ISO 8601'de hafta Pazartesi başlar.
-    // Yılın ilk Perşembe'si hangi haftadaysa, o hafta 1. haftadır.
-    final thursday = date.add(Duration(days: DateTime.thursday - date.weekday));
-    final jan1 = DateTime(thursday.year, 1, 1);
-    final dayOfYear = thursday.difference(jan1).inDays;
-    return (dayOfYear / 7).floor() + 1;
-  }
+  // NEDEN: getIsoWeekNumber kaldırıldı — core/utils/date_utils.dart'a taşındı.
+  // Callers doğrudan app_date.getIsoWeekNumber() kullanır.
 }
 
 // ═══════════════════════════════════════════════════════════

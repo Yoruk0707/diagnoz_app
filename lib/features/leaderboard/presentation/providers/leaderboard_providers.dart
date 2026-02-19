@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/date_utils.dart' as app_date;
 import '../../data/repositories/firebase_leaderboard_repository.dart';
 import '../../domain/entities/leaderboard_entry.dart';
 import '../../domain/repositories/leaderboard_repository.dart';
@@ -61,7 +62,7 @@ final weeklyLeaderboardProvider =
 
   final repository = ref.read(leaderboardRepositoryProvider);
   final now = DateTime.now();
-  final weekNumber = FirebaseLeaderboardRepository.getIsoWeekNumber(now);
+  final weekNumber = app_date.getIsoWeekNumber(now);
 
   final result = await repository.getWeeklyLeaderboard(
     weekNumber: weekNumber,
@@ -109,7 +110,7 @@ final currentUserRankProvider = FutureProvider.autoDispose<int>((ref) async {
   if (userId == null || userId.isEmpty) return 0;
 
   final now = DateTime.now();
-  final weekNumber = FirebaseLeaderboardRepository.getIsoWeekNumber(now);
+  final weekNumber = app_date.getIsoWeekNumber(now);
 
   final result = await repository.getUserRank(
     userId: userId,

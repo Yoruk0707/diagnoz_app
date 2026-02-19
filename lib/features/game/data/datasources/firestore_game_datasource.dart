@@ -13,6 +13,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/date_utils.dart' as app_date;
 import '../../domain/entities/game_session.dart';
 import '../models/game_model.dart';
 
@@ -167,7 +168,7 @@ class FirestoreGameDatasource {
       // NEDEN: Denormalized leaderboard — read maliyetini %50 düşürür.
       // database_schema.md § Denormalization Strategy.
       final now = DateTime.now();
-      final weekNumber = _getIsoWeekNumber(now);
+      final weekNumber = app_date.getIsoWeekNumber(now);
       final year = now.year;
       final weekDocId = '${userId}_w${weekNumber}_$year';
       final weekRef =
@@ -232,20 +233,6 @@ class FirestoreGameDatasource {
   // HELPERS
   // ═══════════════════════════════════════════════════════════════
 
-  /// ISO 8601 hafta numarası hesapla.
-  ///
-  /// NEDEN: Leaderboard document ID'si hafta numarası içerir (w01-w52).
-  /// database_schema.md § leaderboard_weekly: "userId_wWW_YYYY" formatı.
-  /// firebase_leaderboard_repository.dart'taki getIsoWeekNumber ile
-  /// aynı algoritma — write ve read aynı weekNumber üretmeli.
-  static int _getIsoWeekNumber(DateTime date) {
-    // NEDEN: ISO 8601 — haftanın Perşembe gününe bak.
-    // Yılın ilk Perşembe'si 1. haftanın içindedir.
-    // Bu algoritma yıl geçişlerini de doğru hesaplar.
-    final thursday =
-        date.add(Duration(days: DateTime.thursday - date.weekday));
-    final jan1 = DateTime(thursday.year, 1, 1);
-    final dayOfYear = thursday.difference(jan1).inDays;
-    return (dayOfYear / 7).floor() + 1;
-  }
+  // NEDEN: _getIsoWeekNumber kaldırıldı — core/utils/date_utils.dart'a taşındı.
+  // Write ve read tarafı aynı fonksiyonu kullanmalı (DRY).
 }
