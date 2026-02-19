@@ -142,21 +142,30 @@ class FirestoreGameDatasource {
     // vcguide.md § Edge Case 4: concurrent score update'ler kaybolmaz.
     // set+merge kullanılır çünkü user doc henüz olmayabilir
     // (Cloud Function auth.onCreate henüz deploy edilmemiş olabilir).
-    // merge:true → doc yoksa oluşturur, varsa sadece verilen field'ları günceller.
-    // NEDEN: set+merge + dot notation — doc yoksa oluşturur, varsa sadece
-    // belirtilen nested field'ları günceller. Nested map kullanılırsa
-    // merge:true bile olsa stats objesinin TAMAMI overwrite olur
-    // (bestScore vb. kaybolur). Dot notation bunu önler.
+    //
+    // NEDEN: Nested map + mergeFields kullanılır:
+    // - set() dot notation'ı nested path olarak YORUMLAMAZ (update() yapar).
+    //   'stats.totalGamesPlayed' set()'te literal alan adı olur → rules fail.
+    // - merge:true ile nested map stats objesinin tamamını overwrite edebilir.
+    // - mergeFields sadece belirtilen nested field'ları günceller,
+    //   bestScore vb. diğer stats alanlarını korur.
     final userRef = _firestore.collection('users').doc(userId);
     batch.set(
       userRef,
       {
-        'stats.totalGamesPlayed': FieldValue.increment(1),
-        'stats.totalCasesSolved': FieldValue.increment(session.casesCompleted),
-        'stats.weeklyScore': FieldValue.increment(session.totalScore),
-        'stats.monthlyScore': FieldValue.increment(session.totalScore),
+        'stats': {
+          'totalGamesPlayed': FieldValue.increment(1),
+          'totalCasesSolved': FieldValue.increment(session.casesCompleted),
+          'weeklyScore': FieldValue.increment(session.totalScore),
+          'monthlyScore': FieldValue.increment(session.totalScore),
+        },
       },
-      SetOptions(merge: true),
+      SetOptions(mergeFields: [
+        FieldPath(const ['stats', 'totalGamesPlayed']),
+        FieldPath(const ['stats', 'totalCasesSolved']),
+        FieldPath(const ['stats', 'weeklyScore']),
+        FieldPath(const ['stats', 'monthlyScore']),
+      ]),
     );
 
     // ─── 3. Weekly leaderboard güncelle (atomic + merge) ───
