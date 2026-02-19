@@ -6,6 +6,7 @@
 // Referans: ui_ux_design_clean.md § 4.3 Home Screen
 //           CLAUDE.md § State Management — Riverpod ONLY
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../game/data/datasources/firestore_case_datasource.dart';
 import '../../../leaderboard/presentation/providers/leaderboard_providers.dart';
 
 /// Ana sayfa — oyun başlatma ve hızlı erişim.
@@ -45,6 +47,12 @@ class HomePage extends ConsumerWidget {
 
             // ─── Haftalık Top 3 Önizleme ───
             _buildLeaderboardPreview(context, ref),
+
+            // ─── Debug: Seed Data Butonu ───
+            if (kDebugMode) ...[
+              const SizedBox(height: 32),
+              _buildSeedButton(context),
+            ],
           ],
         ),
       ),
@@ -263,6 +271,53 @@ class HomePage extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // DEBUG: SEED DATA BUTTON
+  // ═══════════════════════════════════════════════════════════
+
+  /// Debug-only seed butonu — MockCases'ı Firestore'a yükler.
+  ///
+  /// NEDEN: Sprint 4 geçişi — Firestore'a ilk veri yükleme.
+  /// Sadece kDebugMode'da görünür (production'da gizli).
+  Widget _buildSeedButton(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () async {
+        try {
+          final datasource = FirestoreCaseDatasource();
+          final count = await datasource.seedCases();
+
+          if (!context.mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                count > 0
+                    ? '$count vaka Firestore\'a eklendi!'
+                    : 'Tüm vakalar zaten mevcut.',
+              ),
+              backgroundColor: count > 0 ? AppColors.success : AppColors.textSecondary,
+            ),
+          );
+        } catch (e) {
+          if (!context.mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Seed hatası: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      },
+      icon: const Icon(Icons.storage_rounded),
+      label: const Text('[DEBUG] Seed Cases to Firestore'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.textTertiary,
+        side: const BorderSide(color: AppColors.backgroundTertiary),
+      ),
     );
   }
 

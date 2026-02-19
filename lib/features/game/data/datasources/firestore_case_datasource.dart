@@ -9,8 +9,10 @@
 //           CLAUDE.md § Firestore Cost Optimization
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../domain/entities/medical_case.dart';
+import '../datasources/mock_cases.dart';
 import '../models/case_model.dart';
 
 /// Firestore case datasource — cases collection'dan veri çeker.
@@ -148,6 +150,44 @@ class FirestoreCaseDatasource {
         .where(caseMap.containsKey)
         .map((id) => caseMap[id]!)
         .toList();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SEED (Debug Only)
+  // ═══════════════════════════════════════════════════════════════
+
+  /// MockCases'taki 5 vakayı Firestore'a batch write ile yükler.
+  ///
+  /// NEDEN: Sprint 4 geçişi — Firestore'a ilk veri yükleme.
+  /// Sadece debug modda çağrılır (kDebugMode guard home_page'de).
+  /// Idempotent: Zaten varsa üzerine yazmaz (exists check).
+  /// Document ID'ler: case_001, case_002, ... (mock_cases.dart'taki id'ler).
+  /// Maliyet: 5 read (exists check) + N write (olmayan vakalar).
+  Future<int> seedCases() async {
+    assert(kDebugMode, 'seedCases() sadece debug modda çağrılmalı');
+
+    final batch = _firestore.batch();
+    int addedCount = 0;
+
+    for (final medicalCase in MockCases.allCases) {
+      final docRef = _casesRef.doc(medicalCase.id);
+      final doc = await docRef.get();
+
+      // NEDEN: Idempotent — zaten varsa atla, veri kaybını önle.
+      if (doc.exists) continue;
+
+      batch.set(docRef, CaseModel.toFirestore(medicalCase));
+      addedCount++;
+    }
+
+    if (addedCount > 0) {
+      await batch.commit();
+    }
+
+    debugPrint('Seed: $addedCount vaka eklendi, '
+        '${MockCases.allCases.length - addedCount} zaten vardı.');
+
+    return addedCount;
   }
 
   // ═══════════════════════════════════════════════════════════════
