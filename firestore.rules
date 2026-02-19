@@ -5,10 +5,10 @@
 //
 // Kural özeti:
 //   users:              get=auth, list=false, write=owner only, delete=never
-//   games:              read=owner, create=owner+validation, update/delete=never
+//   games:              read=owner, create/update=owner+validation, delete=never
 //   cases:              read=auth, write=never (admin via Cloud Functions)
-//   leaderboard_weekly: read=auth, write=never (Cloud Functions only)
-//   leaderboard_monthly: read=auth, write=never (Cloud Functions only)
+//   leaderboard_weekly: read=auth, create/update=owner, delete=never
+//   leaderboard_monthly: read=auth, create/update=owner, delete=never
 
 rules_version = '2';
 service cloud.firestore {
@@ -26,23 +26,34 @@ service cloud.firestore {
       return request.auth.uid == uid;
     }
 
-    // NEDEN: Kullanıcı dokümanında izin verilen field'lar.
+    // NEDEN: Kullanıcı dokümanında izin verilen top-level field'lar.
     // Allowlist dışındaki field'lar (ör. isAdmin) client'tan yazılamaz.
+    // stats: nested object (stats.totalGamesPlayed, stats.weeklyScore vb.)
     function isValidUserFields() {
       return request.resource.data.keys().hasOnly([
         'displayName', 'university', 'phoneNumber',
-        'createdAt', 'updatedAt',
-        'gamesPlayed', 'totalScore', 'weeklyScore', 'monthlyScore'
+        'createdAt', 'updatedAt', 'stats'
       ]);
     }
 
     // NEDEN: Oyun dokümanında izin verilen field'lar.
+    // GameModel.toFirestore() çıktısıyla birebir eşleşmeli.
     // Client manipülasyonunu sınırla — sadece bilinen field'lar.
     function isValidGameFields() {
       return request.resource.data.keys().hasOnly([
         'userId', 'mode', 'status', 'startTime', 'endTime',
-        'totalScore', 'casesPlayed', 'caseResults',
-        'passesLeft', 'passesUsed'
+        'totalScore', 'casesCompleted', 'totalCases', 'cases',
+        'passesLeft'
+      ]);
+    }
+
+    // NEDEN: Leaderboard dokümanında izin verilen field'lar.
+    // submitGame batch write'ıyla birebir eşleşmeli.
+    function isValidLeaderboardFields() {
+      return request.resource.data.keys().hasOnly([
+        'userId', 'displayName', 'university',
+        'score', 'casesPlayed', 'gamesPlayed',
+        'weekNumber', 'month', 'year', 'lastUpdated'
       ]);
     }
 
@@ -62,19 +73,23 @@ service cloud.firestore {
 
     // ─── games/{gameId} ───
     // NEDEN: Oyun geçmişi sadece sahibi okuyabilir (gizlilik).
-    // Create: auth + userId eşleşmesi + field allowlist + kaba validation.
-    // totalScore 0-60 arası, casesPlayed 0-5 arası.
-    // Update/delete kapalı — oyun sonuçları immutable (database_schema.md).
+    // Create: oyun başlatma (in_progress status).
+    // Update: oyun tamamlama (batch.set ile final data yazılır).
+    // Delete kapalı — oyun sonuçları immutable (database_schema.md).
+    // totalScore 0-60, casesCompleted 0-5 validasyonu.
     match /games/{gameId} {
       allow read: if isAuth() && isOwner(resource.data.userId);
       allow create: if isAuth()
         && isOwner(request.resource.data.userId)
+        && isValidGameFields();
+      // NEDEN: batch.set() existing doc üzerine yazınca update permission gerekir.
+      // submitGame atomic batch write'ında in_progress → completed güncellenir.
+      allow update: if isAuth()
+        && isOwner(resource.data.userId)
         && isValidGameFields()
         && request.resource.data.totalScore >= 0
-        && request.resource.data.totalScore <= 60
-        && request.resource.data.casesPlayed >= 0
-        && request.resource.data.casesPlayed <= 5;
-      allow update, delete: if false;
+        && request.resource.data.totalScore <= 60;
+      allow delete: if false;
     }
 
     // ─── cases/{caseId} ───
@@ -88,20 +103,33 @@ service cloud.firestore {
     }
 
     // ─── leaderboard_weekly/{docId} ───
-    // NEDEN: Sadece auth kullanıcılar okuyabilir (anonim scraping engeli).
-    // Write kapalı — FieldValue.increment ile güncelleme
-    // sadece Cloud Functions (veya client batch write) üzerinden.
-    // Production'da Cloud Functions'a taşındığında write tamamen kapatılır.
+    // NEDEN: MVP'de client batch write ile leaderboard güncellenir.
+    // FieldValue.increment ile atomic score update.
+    // Sadece kendi userId'sine yazabilir — başkasının skorunu değiştiremez.
+    // Field allowlist ile bilinmeyen field enjeksiyonu engellenir.
+    // Production'da Cloud Functions'a taşındığında write kapatılacak.
     match /leaderboard_weekly/{docId} {
       allow read: if isAuth();
-      allow write: if false;
+      allow create: if isAuth()
+        && isOwner(request.resource.data.userId)
+        && isValidLeaderboardFields();
+      allow update: if isAuth()
+        && isOwner(resource.data.userId)
+        && isValidLeaderboardFields();
+      allow delete: if false;
     }
 
     // ─── leaderboard_monthly/{docId} ───
     // NEDEN: leaderboard_weekly ile aynı kurallar.
     match /leaderboard_monthly/{docId} {
       allow read: if isAuth();
-      allow write: if false;
+      allow create: if isAuth()
+        && isOwner(request.resource.data.userId)
+        && isValidLeaderboardFields();
+      allow update: if isAuth()
+        && isOwner(resource.data.userId)
+        && isValidLeaderboardFields();
+      allow delete: if false;
     }
   }
 }
