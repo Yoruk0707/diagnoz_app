@@ -129,97 +129,103 @@ class FirestoreGameDatasource {
         'gameId=${session.id} userId=$userId '
         'totalScore=${session.totalScore} cases=${session.casesCompleted}');
 
-    final batch = _firestore.batch();
+    try {
+      final batch = _firestore.batch();
 
-    // ─── 1. Game document'ı yaz ───
-    // NEDEN: Immutable history — bir kez yazılır, update/delete yasak.
-    // database_schema.md § Security: "allow update, delete: if false"
-    final gameRef = _gamesRef.doc(session.id);
-    batch.set(gameRef, GameModel.toFirestore(session, userId: userId));
+      // ─── 1. Game document'ı yaz ───
+      // NEDEN: Immutable history — bir kez yazılır, update/delete yasak.
+      // database_schema.md § Security: "allow update, delete: if false"
+      final gameRef = _gamesRef.doc(session.id);
+      batch.set(gameRef, GameModel.toFirestore(session, userId: userId));
+      debugPrint('[GAME-DS] batch op 1/4: game doc set');
 
-    // ─── 2. User stats güncelle (atomic + merge) ───
-    // NEDEN: FieldValue.increment() race condition önler.
-    // vcguide.md § Edge Case 4: concurrent score update'ler kaybolmaz.
-    // set+merge kullanılır çünkü user doc henüz olmayabilir
-    // (Cloud Function auth.onCreate henüz deploy edilmemiş olabilir).
-    //
-    // NEDEN: Nested map + mergeFields kullanılır:
-    // - set() dot notation'ı nested path olarak YORUMLAMAZ (update() yapar).
-    //   'stats.totalGamesPlayed' set()'te literal alan adı olur → rules fail.
-    // - merge:true ile nested map stats objesinin tamamını overwrite edebilir.
-    // - mergeFields sadece belirtilen nested field'ları günceller,
-    //   bestScore vb. diğer stats alanlarını korur.
-    final userRef = _firestore.collection('users').doc(userId);
-    batch.set(
-      userRef,
-      {
-        'stats': {
-          'totalGamesPlayed': FieldValue.increment(1),
-          'totalCasesSolved': FieldValue.increment(session.casesCompleted),
-          'weeklyScore': FieldValue.increment(session.totalScore),
-          'monthlyScore': FieldValue.increment(session.totalScore),
+      // ─── 2. User stats güncelle (atomic + merge) ───
+      // NEDEN: FieldValue.increment() race condition önler.
+      // vcguide.md § Edge Case 4: concurrent score update'ler kaybolmaz.
+      // set+merge kullanılır çünkü user doc henüz olmayabilir.
+      //
+      // NEDEN: merge:true nested map ile deep merge yapar — sadece belirtilen
+      // sub-field'lar güncellenir, stats içindeki diğer alanlar korunur.
+      // mergeFields + FieldPath + FieldValue.increment web SDK'da uyumsuz
+      // olabiliyor, bu yüzden merge:true tercih edilir.
+      final userRef = _firestore.collection('users').doc(userId);
+      batch.set(
+        userRef,
+        {
+          'stats': {
+            'totalGamesPlayed': FieldValue.increment(1),
+            'totalCasesSolved': FieldValue.increment(session.casesCompleted),
+            'weeklyScore': FieldValue.increment(session.totalScore),
+            'monthlyScore': FieldValue.increment(session.totalScore),
+          },
         },
-      },
-      SetOptions(mergeFields: [
-        FieldPath(const ['stats', 'totalGamesPlayed']),
-        FieldPath(const ['stats', 'totalCasesSolved']),
-        FieldPath(const ['stats', 'weeklyScore']),
-        FieldPath(const ['stats', 'monthlyScore']),
-      ]),
-    );
+        SetOptions(merge: true),
+      );
+      debugPrint('[GAME-DS] batch op 2/4: user stats set+merge');
 
-    // ─── 3. Weekly leaderboard güncelle (atomic + merge) ───
-    // NEDEN: Denormalized leaderboard — read maliyetini %50 düşürür.
-    // database_schema.md § Denormalization Strategy.
-    final now = DateTime.now();
-    final weekNumber = _getIsoWeekNumber(now);
-    final year = now.year;
-    final weekDocId = '${userId}_w${weekNumber}_$year';
-    final weekRef = _firestore.collection('leaderboard_weekly').doc(weekDocId);
+      // ─── 3. Weekly leaderboard güncelle (atomic + merge) ───
+      // NEDEN: Denormalized leaderboard — read maliyetini %50 düşürür.
+      // database_schema.md § Denormalization Strategy.
+      final now = DateTime.now();
+      final weekNumber = _getIsoWeekNumber(now);
+      final year = now.year;
+      final weekDocId = '${userId}_w${weekNumber}_$year';
+      final weekRef =
+          _firestore.collection('leaderboard_weekly').doc(weekDocId);
 
-    // NEDEN: SetOptions(merge: true) — document yoksa oluşturur, varsa günceller.
-    // İlk oyunda create, sonraki oyunlarda increment.
-    batch.set(
-      weekRef,
-      {
-        'userId': userId,
-        'displayName': displayName ?? '',
-        'university': university ?? '',
-        'score': FieldValue.increment(session.totalScore),
-        'casesPlayed': FieldValue.increment(session.casesCompleted),
-        'gamesPlayed': FieldValue.increment(1),
-        'weekNumber': weekNumber,
-        'year': year,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+      // NEDEN: SetOptions(merge: true) — document yoksa oluşturur, varsa günceller.
+      // İlk oyunda create, sonraki oyunlarda increment.
+      batch.set(
+        weekRef,
+        {
+          'userId': userId,
+          'displayName': displayName ?? '',
+          'university': university ?? '',
+          'score': FieldValue.increment(session.totalScore),
+          'casesPlayed': FieldValue.increment(session.casesCompleted),
+          'gamesPlayed': FieldValue.increment(1),
+          'weekNumber': weekNumber,
+          'year': year,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      debugPrint('[GAME-DS] batch op 3/4: weekly leaderboard set+merge');
 
-    // ─── 4. Monthly leaderboard güncelle (atomic + merge) ───
-    final month = now.month;
-    final monthDocId = '${userId}_m${month}_$year';
-    final monthRef =
-        _firestore.collection('leaderboard_monthly').doc(monthDocId);
+      // ─── 4. Monthly leaderboard güncelle (atomic + merge) ───
+      final month = now.month;
+      final monthDocId = '${userId}_m${month}_$year';
+      final monthRef =
+          _firestore.collection('leaderboard_monthly').doc(monthDocId);
 
-    batch.set(
-      monthRef,
-      {
-        'userId': userId,
-        'displayName': displayName ?? '',
-        'university': university ?? '',
-        'score': FieldValue.increment(session.totalScore),
-        'casesPlayed': FieldValue.increment(session.casesCompleted),
-        'gamesPlayed': FieldValue.increment(1),
-        'month': month,
-        'year': year,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+      batch.set(
+        monthRef,
+        {
+          'userId': userId,
+          'displayName': displayName ?? '',
+          'university': university ?? '',
+          'score': FieldValue.increment(session.totalScore),
+          'casesPlayed': FieldValue.increment(session.casesCompleted),
+          'gamesPlayed': FieldValue.increment(1),
+          'month': month,
+          'year': year,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      debugPrint('[GAME-DS] batch op 4/4: monthly leaderboard set+merge');
 
-    // NEDEN: Batch commit — 4 yazma işlemi tek atomik transaction.
-    // Biri başarısız olursa hiçbiri yazılmaz.
-    await batch.commit();
+      // NEDEN: Batch commit — 4 yazma işlemi tek atomik transaction.
+      // Biri başarısız olursa hiçbiri yazılmaz.
+      debugPrint('[GAME-DS] calling batch.commit()...');
+      await batch.commit();
+      debugPrint('[GAME-DS] batch write COMPLETE');
+    } catch (e, stackTrace) {
+      debugPrint('[GAME-DS] batch write ERROR: $e');
+      debugPrint('[GAME-DS] stack trace: $stackTrace');
+      // NEDEN: Hatayı yukarıya fırlat — repository catch'leyip Left döndürsün.
+      rethrow;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -230,16 +236,16 @@ class FirestoreGameDatasource {
   ///
   /// NEDEN: Leaderboard document ID'si hafta numarası içerir (w01-w52).
   /// database_schema.md § leaderboard_weekly: "userId_wWW_YYYY" formatı.
-  /// Pazartesi = hafta başlangıcı (Türkiye standardı).
+  /// firebase_leaderboard_repository.dart'taki getIsoWeekNumber ile
+  /// aynı algoritma — write ve read aynı weekNumber üretmeli.
   static int _getIsoWeekNumber(DateTime date) {
-    // NEDEN: ISO 8601 — yılın ilk Perşembe'si 1. haftanın içindedir.
-    final dayOfYear = date.difference(DateTime(date.year, 1, 1)).inDays;
-    final weekday = date.weekday; // 1=Mon, 7=Sun
-    final weekNumber = ((dayOfYear - weekday + 10) / 7).floor();
-
-    // NEDEN: Edge case — yıl başında hafta 0 veya 53 olabilir.
-    if (weekNumber < 1) return 52;
-    if (weekNumber > 52) return 1;
-    return weekNumber;
+    // NEDEN: ISO 8601 — haftanın Perşembe gününe bak.
+    // Yılın ilk Perşembe'si 1. haftanın içindedir.
+    // Bu algoritma yıl geçişlerini de doğru hesaplar.
+    final thursday =
+        date.add(Duration(days: DateTime.thursday - date.weekday));
+    final jan1 = DateTime(thursday.year, 1, 1);
+    final dayOfYear = thursday.difference(jan1).inDays;
+    return (dayOfYear / 7).floor() + 1;
   }
 }
