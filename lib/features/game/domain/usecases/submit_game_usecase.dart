@@ -11,6 +11,7 @@
 //           CLAUDE.md § Form Submission — Duplicate Prevention
 
 import 'package:dartz/dartz.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
@@ -47,6 +48,21 @@ class SubmitGameUsecase {
     if (session.status != GameStatus.completed &&
         session.status != GameStatus.timeout) {
       return Left(GameFailure.alreadySubmitted());
+    }
+
+    // ─── DEBUG: Validation öncesi session dump ───
+    if (kDebugMode) {
+      debugPrint('[SUBMIT] === Validation Start ===');
+      debugPrint('[SUBMIT] totalScore: ${session.totalScore}');
+      debugPrint('[SUBMIT] passesLeft: ${session.passesLeft}');
+      debugPrint('[SUBMIT] caseResults.length: ${session.caseResults.length}');
+      for (int i = 0; i < session.caseResults.length; i++) {
+        final r = session.caseResults[i];
+        debugPrint('[SUBMIT] case[$i]: caseId=${r.caseId} '
+            'score=${r.score} timeLeft=${r.timeLeft} '
+            'timeSpent=${r.timeSpent} isCorrect=${r.isCorrect} '
+            'diagnosis=${r.diagnosis} tests=${r.testsRequested.length}');
+      }
     }
 
     // ─── 2. NaN/Infinity kontrolü ───
@@ -168,14 +184,20 @@ class SubmitGameUsecase {
 
     // ─── 10. PassesLeft tutarlılık kontrolü ───
     // NEDEN: passesLeft, yanlış cevap sayısıyla tutarlı olmalı.
-    // passesUsed = yanlış cevaplı vaka sayısı (timeout hariç — diagnosis null).
-    // Timeout vakaları da pas düşürür ama diagnosis null olur.
-    // Yanlış cevap = !isCorrect && diagnosis != null (aktif yanlış tahmin).
+    // passesUsed = yanlış cevaplı vaka sayısı (timeout dahil — diagnosis non-null).
+    // Eleme durumunda passesLeft 0'a clamp edilir (submit_diagnosis.dart ve
+    // game_notifier.dart'ta `newPassesLeft < 0 ? 0 : newPassesLeft`).
+    // Bu yüzden expectedPassesLeft de 0'a clamp edilmeli.
     final passesUsed = session.caseResults
         .where((r) => !r.isCorrect && r.diagnosis != null)
         .length;
-    final expectedPassesLeft = AppConstants.passesPerGame - passesUsed;
+    final expectedPassesLeft =
+        (AppConstants.passesPerGame - passesUsed).clamp(0, AppConstants.passesPerGame);
     if (session.passesLeft != expectedPassesLeft) {
+      if (kDebugMode) {
+        debugPrint('[SUBMIT] FAIL #10: passesLeft=${session.passesLeft} '
+            'expected=$expectedPassesLeft passesUsed=$passesUsed');
+      }
       return Left(GameFailure.timerTampering());
     }
 
