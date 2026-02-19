@@ -49,7 +49,20 @@ class SubmitGameUsecase {
       return Left(GameFailure.alreadySubmitted());
     }
 
-    // ─── 2. Score validation ───
+    // ─── 2. NaN/Infinity kontrolü ───
+    // NEDEN: double.nan ve double.infinity range check'leri bypass eder
+    // (NaN < 0 == false, NaN > 60 == false → validation geçer).
+    // Önce isFinite kontrolü, sonra range check yapılmalı.
+    if (!session.totalScore.isFinite) {
+      return Left(GameFailure.timerTampering());
+    }
+    for (final result in session.caseResults) {
+      if (!result.score.isFinite) {
+        return Left(GameFailure.timerTampering());
+      }
+    }
+
+    // ─── 3. Score validation ───
     // NEDEN: vcguide.md § Edge Case 2 — manipülasyon koruması.
     // Her vaka skoru 0-12 aralığında olmalı.
     for (final result in session.caseResults) {
