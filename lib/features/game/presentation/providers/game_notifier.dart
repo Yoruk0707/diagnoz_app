@@ -4,13 +4,19 @@
 // Tüm oyun akışı burada yönetilir: başlatma, timer, test isteme,
 // tanı gönderme, sonraki vaka, oyun bitişi.
 //
+// Sprint 4 güncellemesi: Oyun bitince Firestore'a atomic batch write.
+// SubmitGameUsecase ile skor kaydedilir (game + user stats + leaderboard).
+//
 // Referans: auth_notifier.dart pattern'ı
 //           vcguide.md § Timer System (dispose cleanup)
 //           vcguide.md § Edge Case 3 (test time cost)
+//           vcguide.md § Edge Case 5 (duplicate submit — isSubmitting flag)
+//           database_schema.md § Submit Game (Atomic Update)
 //           app_constants.dart (gameDurationSeconds, testTimeCostSeconds)
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -18,26 +24,38 @@ import '../../domain/entities/game_session.dart';
 import '../../domain/entities/medical_case.dart';
 import '../../domain/usecases/start_game.dart';
 import '../../domain/usecases/submit_diagnosis.dart';
+import '../../domain/usecases/submit_game_usecase.dart';
 import 'game_state.dart';
 
 /// Game state notifier — tüm oyun akışı.
 ///
 /// NEDEN: StateNotifier pattern — immutable state, tek yönlü veri akışı.
 /// Timer burada yönetilir, dispose'da cleanup yapılır (memory leak önleme).
+///
+/// Sprint 4: Oyun bitince SubmitGameUsecase çağrılarak Firestore'a
+/// atomic batch write yapılır (game + user stats + leaderboard).
 class GameNotifier extends StateNotifier<GameState> {
   final StartGame _startGame;
   final SubmitDiagnosis _submitDiagnosis;
+  final SubmitGameUsecase _submitGameUsecase;
 
   Timer? _timer;
 
-  // NEDEN: Timer cleanup için referans tutuyoruz.
-  // vcguide.md § Timer System: dispose()'da iptal edilmeli.
+  // NEDEN: Duplicate submit koruması — vcguide.md § Edge Case 5.
+  // Firestore'a yazma işlemi sırasında tekrar submit engellensin.
+  bool _isSubmittingToFirestore = false;
+
+  // NEDEN: Duplicate diagnosis submit koruması.
+  // Ağ gecikmesinde kullanıcı butona tekrar basarsa ikinci submit engellensin.
+  bool _isSubmittingDiagnosis = false;
 
   GameNotifier({
     required StartGame startGame,
     required SubmitDiagnosis submitDiagnosis,
+    required SubmitGameUsecase submitGameUsecase,
   })  : _startGame = startGame,
         _submitDiagnosis = submitDiagnosis,
+        _submitGameUsecase = submitGameUsecase,
         super(const GameInitial());
 
   // ═══════════════════════════════════════════════════════════
@@ -148,7 +166,9 @@ class GameNotifier extends StateNotifier<GameState> {
     );
 
     if (isEliminated || allCasesDone) {
-      state = GameOver(session: updatedSession);
+      state = GameOver(session: updatedSession, isSubmitting: true);
+      // NEDEN: Oyun bitti — Firestore'a kaydet.
+      _submitGameToFirestore(updatedSession);
     } else {
       // NEDEN: Timeout sonucu göster, sonra sonraki vakaya geç.
       state = GameCaseResult(
@@ -227,36 +247,119 @@ class GameNotifier extends StateNotifier<GameState> {
     final currentState = state;
     if (currentState is! GamePlaying) return; // NEDEN: Duplicate submit koruması
 
+    // NEDEN: Ağ gecikmesinde buton spam'ini engelle.
+    // _isSubmittingToFirestore pattern'ı ile aynı mantık.
+    if (_isSubmittingDiagnosis) return;
+    _isSubmittingDiagnosis = true;
+
     _stopTimer();
 
-    final result = await _submitDiagnosis(
-      session: currentState.session,
-      diagnosis: diagnosis,
-      timeLeft: currentState.timeLeft,
-      testsRequested: currentState.requestedTests,
-    );
+    try {
+      final result = await _submitDiagnosis(
+        session: currentState.session,
+        diagnosis: diagnosis,
+        timeLeft: currentState.timeLeft,
+        testsRequested: currentState.requestedTests,
+      );
 
-    result.fold(
-      (failure) {
-        state = GameError(
-          failure: failure,
-          previousState: currentState,
-        );
-      },
-      (diagnosisResult) {
-        if (diagnosisResult.updatedSession.isGameOver) {
-          state = GameOver(session: diagnosisResult.updatedSession);
-        } else {
-          state = GameCaseResult(
-            session: diagnosisResult.updatedSession,
-            isCorrect: diagnosisResult.isCorrect,
-            score: diagnosisResult.score,
-            correctDiagnosis: diagnosisResult.correctDiagnosis,
-            userDiagnosis: diagnosis,
+      result.fold(
+        (failure) {
+          state = GameError(
+            failure: failure,
+            previousState: currentState,
           );
-        }
-      },
-    );
+        },
+        (diagnosisResult) {
+          if (diagnosisResult.updatedSession.isGameOver) {
+            state = GameOver(
+              session: diagnosisResult.updatedSession,
+              isSubmitting: true,
+            );
+            // NEDEN: Oyun bitti — Firestore'a kaydet.
+            _submitGameToFirestore(diagnosisResult.updatedSession);
+          } else {
+            state = GameCaseResult(
+              session: diagnosisResult.updatedSession,
+              isCorrect: diagnosisResult.isCorrect,
+              score: diagnosisResult.score,
+              correctDiagnosis: diagnosisResult.correctDiagnosis,
+              userDiagnosis: diagnosis,
+            );
+          }
+        },
+      );
+    } finally {
+      // NEDEN: Başarı veya hata — flag'i sıfırla (CLAUDE.md § Form Submission).
+      _isSubmittingDiagnosis = false;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // FIRESTORE SUBMIT
+  // ═══════════════════════════════════════════════════════════
+
+  /// Oyunu Firestore'a kaydet — atomic batch write.
+  ///
+  /// NEDEN: database_schema.md § Submit Game (Atomic Update).
+  /// Game + user stats + weekly leaderboard + monthly leaderboard
+  /// tek batch'te yazılır. FieldValue.increment ile race condition yok.
+  ///
+  /// vcguide.md § Edge Case 5: _isSubmittingToFirestore flag ile
+  /// duplicate submit önlenir (ağ gecikmesinde buton spam'i).
+  ///
+  /// CLAUDE.md § Error Handling: "Wrap ALL async operations in try-catch"
+  Future<void> _submitGameToFirestore(GameSession session) async {
+    // NEDEN: Duplicate submit koruması — flag kontrolü.
+    // Bu method _handleTimeOut ve submitDiagnosis'ten çağrılabilir.
+    if (_isSubmittingToFirestore) return;
+    _isSubmittingToFirestore = true;
+
+    try {
+      final result = await _submitGameUsecase(session);
+
+      // NEDEN: StateNotifier dispose edilmişse state güncelleme yapma.
+      // autoDispose provider ile ekrandan çıkınca dispose olur.
+      if (!mounted) return;
+
+      result.fold(
+        (failure) {
+          if (kDebugMode) {
+            print('[GAME] Submit to Firestore failed: ${failure.message}');
+          }
+          final currentState = state;
+          if (currentState is GameOver) {
+            state = currentState.copyWith(
+              isSubmitting: false,
+              submitError: failure.message,
+            );
+          }
+        },
+        (_) {
+          final currentState = state;
+          if (currentState is GameOver) {
+            state = currentState.copyWith(
+              isSubmitting: false,
+              isSubmitted: true,
+            );
+          }
+        },
+      );
+    } catch (e) {
+      // NEDEN: Beklenmeyen hata — UI'da hata mesajı göster ama crash olmasın.
+      if (kDebugMode) {
+        print('[GAME] Unexpected error submitting to Firestore: $e');
+      }
+      if (!mounted) return;
+      final currentState = state;
+      if (currentState is GameOver) {
+        state = currentState.copyWith(
+          isSubmitting: false,
+          submitError: 'Skor kaydedilirken hata oluştu.',
+        );
+      }
+    } finally {
+      _isSubmittingToFirestore = false;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -273,7 +376,9 @@ class GameNotifier extends StateNotifier<GameState> {
     final session = currentState.session;
 
     if (session.isGameOver) {
-      state = GameOver(session: session);
+      state = GameOver(session: session, isSubmitting: true);
+      // NEDEN: Son vaka sonucu ekranından geçiş — oyun bitmişse kaydet.
+      _submitGameToFirestore(session);
       return;
     }
 

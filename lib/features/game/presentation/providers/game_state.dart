@@ -94,18 +94,47 @@ class GameCaseResult extends GameState {
 ///
 /// NEDEN: Oyun biter (tüm vakalar bitti veya eleme).
 /// UI: skor özeti, tekrar oyna butonu.
+///
+/// [isSubmitting] Firestore'a skor kaydedilirken true.
+/// [isSubmitted] Skor başarıyla kaydedildiyse true.
+/// [submitError] Kayıt hatası mesajı (varsa).
+///
+/// NEDEN: vcguide.md § Edge Case 5 — UI'da duplicate submit koruması.
+/// isSubmitting true iken "Tekrar Oyna" butonu gösterilmez.
 class GameOver extends GameState {
   final GameSession session;
+  final bool isSubmitting;
+  final bool isSubmitted;
+  final String? submitError;
 
-  const GameOver({required this.session});
+  const GameOver({
+    required this.session,
+    this.isSubmitting = false,
+    this.isSubmitted = false,
+    this.submitError,
+  });
 
   double get totalScore => session.totalScore;
   int get casesCompleted => session.casesCompleted;
   int get totalCases => session.totalCases;
   bool get isVictory => session.isVictory;
 
+  /// NEDEN: Immutable state update — Firestore submit durumu değişince.
+  GameOver copyWith({
+    bool? isSubmitting,
+    bool? isSubmitted,
+    String? submitError,
+  }) {
+    return GameOver(
+      session: session,
+      isSubmitting: isSubmitting ?? this.isSubmitting,
+      isSubmitted: isSubmitted ?? this.isSubmitted,
+      submitError: submitError ?? this.submitError,
+    );
+  }
+
   @override
-  List<Object?> get props => [session];
+  List<Object?> get props => [session, isSubmitting, isSubmitted, submitError];
 }
 
 /// Oyun sırasında hata oluştu.
