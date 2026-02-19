@@ -42,6 +42,15 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // NEDEN: Yeni vakaya geçişte tanı input'unu temizle.
+    // GameCaseResult/GameLoading → GamePlaying geçişinde clear().
+    // Timer tick'lerinde tetiklenmez (previous da GamePlaying olur).
+    ref.listen<GameState>(gameNotifierProvider, (previous, next) {
+      if (next is GamePlaying && previous is! GamePlaying) {
+        _controller.clear();
+      }
+    });
+
     final gameState = ref.watch(gameNotifierProvider);
 
     return Scaffold(
