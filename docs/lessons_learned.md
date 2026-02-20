@@ -35,6 +35,7 @@
 21. [TextEditingController in Riverpod Timer â€” ConsumerStatefulWidget Required](#21-texteditingcontroller-in-riverpod-timer--consumerstatefulwidget-required)
 22. [Codex Prompt Format â€” Terminal vs Chat Distinction](#22-codex-prompt-format--terminal-vs-chat-distinction)
 23. [Mock Data Const Propagation â€” static const vs static final](#23-mock-data-const-propagation--static-const-vs-static-final)
+24. [Sprint 4 Firestore Batch Write â€” Lessons & Known Issues](#24-sprint-4-firestore-batch-write--lessons--known-issues)
 
 ---
 
@@ -1012,6 +1013,92 @@ static final _case1 = const MedicalCase(
 
 ---
 
+## 24. Sprint 4 Firestore Batch Write - Lessons & Known Issues
+
+> Added: February 19, 2026 - Sprint 4 Session
+
+### Lessons Learned
+
+Sprint 4'te submitGame batch write (4 koleksiyon: games, users, leaderboard_weekly, leaderboard_monthly) calismasi icin 6 ayri bug fix gerekti. Her biri farkli katmanda sessizce basarisiz oluyordu.
+
+### Bug 1: batch.update() on Non-Existent User Doc
+
+```dart
+// WRONG - User doc yoksa NOT_FOUND, tum batch fail olur
+batch.update(userRef, {'stats.totalGamesPlayed': FieldValue.increment(1)});
+
+// CORRECT - Doc yoksa olusturur, varsa merge eder
+batch.set(userRef, {'stats': {...}}, SetOptions(merge: true));
+```
+
+### Bug 2: set() Dot Notation != Nested Path
+
+```dart
+// WRONG - set() dot'u literal alan adi olarak yazar, rules fail eder
+batch.set(userRef, {'stats.totalGamesPlayed': FieldValue.increment(1)}, SetOptions(merge: true));
+// request.resource.data.keys() = ['stats.totalGamesPlayed'] -> allowlist'te YOK
+
+// CORRECT - Nested map + merge:true = deep merge
+batch.set(userRef, {'stats': {'totalGamesPlayed': FieldValue.increment(1)}}, SetOptions(merge: true));
+// request.resource.data.keys() = ['stats'] -> allowlist'te VAR
+```
+
+**KRITIK FARK:** `update()` dot notation'i nested path olarak yorumlar. `set()` literal alan adi olarak yazar.
+
+### Bug 3: mergeFields + FieldPath + FieldValue.increment = Web SDK Uyumsuzlugu
+
+```dart
+// WRONG - Web SDK'da sessizce hang eder
+SetOptions(mergeFields: [FieldPath(const ['stats', 'totalGamesPlayed'])])
+
+// CORRECT - merge:true her platformda calisir
+SetOptions(merge: true)
+```
+
+### Bug 4: ISO 8601 Week Number - Write/Read Mismatch
+
+```dart
+// WRONG - Farkli algoritma, farkli sonuc (7 vs 8)
+// Datasource (write): ((dayOfYear - weekday + 10) / 7).floor()
+// Repository (read): Thursday-based ISO 8601
+
+// CORRECT - Shared utility, tek kaynak
+// lib/core/utils/date_utils.dart
+int getIsoWeekNumber(DateTime date) {
+  final thursday = date.add(Duration(days: DateTime.thursday - date.weekday));
+  final jan1 = DateTime(thursday.year, 1, 1);
+  return (thursday.difference(jan1).inDays / 7).floor() + 1;
+}
+```
+
+### Bug 5: Firestore Security Rules - Field Allowlist Mismatch
+
+Batch write'daki field'lar rules'taki `hasOnly()` listesiyle birebir eslesmeli. Ozellikle:
+- `isValidUserFields()` icinde `stats` olmali (nested stats objesi icin)
+- `isValidGameFields()` icinde `casesCompleted`, `totalCases`, `cases`, `passesLeft` olmali
+- Leaderboard create VE update izni olmali (ilk oyun create, sonrakiler update)
+
+### Known Issue: Leaderboard Tab Refresh
+
+**Durum:** Siralama tab'ina tiklaninca veri gelmiyor, sayfa yenilenince geliyor.
+**Muhtemel sebep:** `weeklyLeaderboardProvider` ve `monthlyLeaderboardProvider` `FutureProvider.autoDispose` kullanir. Tab degisiminde provider invalidate edilmiyor — `ref.invalidate()` veya `ref.refresh()` eksik.
+**Oncelik:** Sprint 4 sonrasi duzeltilecek (Sprint 5 backlog).
+
+### Prevention Checklist
+
+```
+- Firestore batch write: HER ZAMAN try-catch ile sar, success/error logla
+- batch.update() KULLANMA — batch.set() + merge:true kullan (doc olmayabilir)
+- set() icinde dot notation KULLANMA — nested map kullan
+- mergeFields KULLANMA web'de — merge:true kullan
+- Ayni hesaplama birden fazla yerde varsa: shared utility'ye tasi (DRY)
+- Security rules field allowlist: batch write'daki tum field'lari icermeli
+- Leaderboard write: hem create hem update izni olmali
+- Debug sirasinda: her katmana (notifier, usecase, repo, datasource) debugPrint ekle
+```
+
+---
+
 ## Usage Instructions for Claude
 
 ### BEFORE Implementing ANYTHING:
@@ -1068,11 +1155,11 @@ Claude's Internal Process:
 | Field | Value |
 |-------|-------|
 | File Path | Project Knowledge |
-| Version | 1.3 |
+| Version | 1.4 |
 | Created | February 6, 2026 |
-| Last Updated | February 16, 2026 |
-| Sessions | Firebase config, main.dart security, Sprint 1, Sprint 2 auth, Sprint 3 game loop |
-| New in v1.3 | S19 Old skeleton audit, S20 GitHub raw links, S21 TextEditingController timer bug, S22 Codex prompt format, S23 Const propagation |
+| Last Updated | February 19, 2026 |
+| Sessions | Firebase config, main.dart security, Sprint 1, Sprint 2 auth, Sprint 3 game loop, Sprint 4 Firebase integration |
+| New in v1.4 | S24 Firestore batch write lessons (6 bugs), leaderboard tab refresh known issue |
 
 ---
 
