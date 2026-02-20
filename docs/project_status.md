@@ -1,5 +1,5 @@
 # DiagnozApp - Proje Durumu
-Son Guncelleme: 16 Subat 2026
+Son Guncelleme: 20 Subat 2026
 
 ## Tamamlanan Sprintler
 
@@ -95,22 +95,66 @@ Tamamlanma: 16 Subat 2026
 **Test Sonucu:** Tam oyun dongusu Chrome'da calisiyor âœ…
 - Oyna butonu â†’ Vaka sunumu â†’ Test isteme (-10sn) â†’ Tani girisi â†’ Dogru/Yanlis feedback â†’ Sonraki vaka â†’ Oyun bitti ekrani
 
-## Aktif Sprint
-Sprint 4: Firebase Integration + Leaderboard - henuz baslamadi
+### Sprint 4: Firebase Integration + Leaderboard âœ…
+Tamamlanma: 20 Subat 2026
 
-### Sprint 4 Kapsam (Beklenen)
-- Firestore'a vaka verisi tasima (mock_cases â†’ Firestore)
-- FirebaseGameRepository implementasyonu
+**Firestore Data Layer:**
+- lib/features/game/data/datasources/firestore_case_datasource.dart (vaka CRUD + seedCases)
+- lib/features/game/data/datasources/firestore_game_datasource.dart (oyun CRUD + atomic batch write)
+- lib/features/game/data/models/game_model.dart (Firestore serialization)
+- lib/features/game/data/repositories/firebase_game_repository.dart (GameRepository Firestore impl)
+- lib/features/game/domain/usecases/submit_game_usecase.dart (validation + submit)
+
+**Leaderboard Feature:**
+- lib/features/leaderboard/domain/entities/leaderboard_entry.dart
+- lib/features/leaderboard/domain/repositories/leaderboard_repository.dart (interface)
+- lib/features/leaderboard/data/repositories/firebase_leaderboard_repository.dart (5 dk cache)
+- lib/features/leaderboard/presentation/providers/leaderboard_providers.dart
+- lib/features/leaderboard/presentation/pages/leaderboard_page.dart (haftalik/aylik tab)
+
+**Shared Utilities:**
+- lib/core/utils/date_utils.dart (ISO 8601 week number — DRY)
+
+**Firebase Configuration:**
+- firestore.rules (security rules — field allowlist, owner checks, delete: false)
+- firestore.indexes.json (composite indexes: leaderboard_weekly, leaderboard_monthly)
+- firebase.json (firestore rules + indexes config)
+
+**Home Page Upgrade:**
+- lib/features/home/presentation/pages/home_page.dart (oyun istatistikleri + debug seed butonu)
+
+**Atomic Batch Write (submitGame):**
+- 4 koleksiyon tek transaction: games + users + leaderboard_weekly + leaderboard_monthly
+- FieldValue.increment() ile race condition koruması
+- set() + merge:true ile olmayan doc olusturma
+- 10 asamali client-side validation (score, time, passes, duplicate, NaN)
+
+**Bug Fixes (6 adet):**
+1. TextField temizlenmeme — ref.listen ile GamePlaying gecisinde clear()
+2. passesLeft validation — .clamp(0, passesPerGame) ile eleme durumu
+3. Composite index eksikligi — firestore.indexes.json olusturuldu
+4. Security rules batch write bloklama — field allowlist + leaderboard write izni
+5. batch.update() non-existent doc — set() + merge:true’ya gecis
+6. ISO 8601 week number mismatch — shared utility’ye tasindi
+
+**Test Sonucu:** Tam oyun + Firestore kayit + leaderboard Chrome’da calisiyor âœ…
+
+## Aktif Sprint
+Sprint 5: Planlanacak
+
+### Sprint 5 Kapsam (Beklenen)
+- correctDiagnosis alani cases_private koleksiyonuna tasima
 - Server-side timer validation (Cloud Functions)
-- Leaderboard (haftalik/aylik)
-- Skor Firestore'a kayit
-- Admin vaka yonetimi
+- Leaderboard tab refresh bug duzeltme (ref.invalidate)
+- Profil sayfasi (kullanici istatistikleri)
+- Daha fazla tibbi vaka ekleme
+- Admin vaka yonetimi (Cloud Functions)
 
 ## Bilinen Sorunlar
+- Leaderboard tab'ina tiklaninca veri gelmiyor, sayfa yenilenince geliyor (provider invalidate eksik — Sprint 5)
 - macos ve windows Firebase kayitlari gereksiz eklendi (zararsiz)
-- withOpacity deprecation uyarisi (4 adet, sadece info seviyesinde)
 - reCAPTCHA Enterprise uyarilari Chrome console'da (fonksiyonu etkilemiyor)
-- HomePage hala "Sprint 3'te aktif olacak" placeholder metni gosteriyor (kozmetik)
+- correctDiagnosis alani client'tan gorunur — Sprint 5'te cases_private'a tasinacak
 - Mock data'da 5 vaka var, tekrar edebiliyorlar (daha fazla vaka eklenecek)
 
 ## GitHub Repository
@@ -170,8 +214,9 @@ lib/
 â”‚   â”‚   â”œâ”€â”€ app_spacing.dart
 â”‚   â”‚   â”œâ”€â”€ app_theme.dart
 â”‚   â”‚   â””â”€â”€ app_typography.dart
-â”‚   â””â”€â”€ utils/
-â”‚       â””â”€â”€ input_validator.dart
+â”‚   â”œâ”€â”€ utils/
+â”‚   â”‚   â”œâ”€â”€ input_validator.dart
+â”‚   â”‚   â””â”€â”€ date_utils.dart (ISO 8601 week number)
 â”œâ”€â”€ features/
 â”‚   â”œâ”€â”€ auth/
 â”‚   â”‚   â”œâ”€â”€ data/
@@ -186,17 +231,21 @@ lib/
 â”‚   â”‚       â””â”€â”€ providers/ (auth_state, auth_notifier, auth_providers)
 â”‚   â”œâ”€â”€ game/
 â”‚   â”‚   â”œâ”€â”€ data/
-â”‚   â”‚   â”‚   â”œâ”€â”€ datasources/mock_cases.dart (5 Turkce tibbi vaka)
-â”‚   â”‚   â”‚   â””â”€â”€ repositories/local_game_repository.dart
+â”‚   â”‚   â”‚   â”œâ”€â”€ datasources/ (mock_cases, firestore_case_datasource, firestore_game_datasource)
+â”‚   â”‚   â”‚   â”œâ”€â”€ models/game_model.dart
+â”‚   â”‚   â”‚   â””â”€â”€ repositories/ (local_game_repository, firebase_game_repository)
 â”‚   â”‚   â”œâ”€â”€ domain/
 â”‚   â”‚   â”‚   â”œâ”€â”€ entities/ (medical_case.dart, game_session.dart)
 â”‚   â”‚   â”‚   â”œâ”€â”€ repositories/game_repository.dart (interface)
-â”‚   â”‚   â”‚   â””â”€â”€ usecases/ (start_game.dart, submit_diagnosis.dart)
+â”‚   â”‚   â”‚   â””â”€â”€ usecases/ (start_game, submit_diagnosis, submit_game_usecase)
 â”‚   â”‚   â””â”€â”€ presentation/
 â”‚   â”‚       â”œâ”€â”€ pages/ (game_page.dart, game_screen.dart)
-â”‚   â”‚       â”œâ”€â”€ providers/ (game_state.dart, game_notifier.dart, game_providers.dart)
-â”‚   â”‚       â””â”€â”€ widgets/ (timer_widget.dart, case_card_widget.dart)
-â”‚   â”œâ”€â”€ home/presentation/pages/home_page.dart (placeholder)
-â”‚   â”œâ”€â”€ leaderboard/presentation/pages/leaderboard_page.dart (placeholder)
+â”‚   â”‚       â”œâ”€â”€ providers/ (game_state, game_notifier, game_providers)
+â”‚   â”‚       â””â”€â”€ widgets/ (timer_widget, case_card_widget)
+â”‚   â”œâ”€â”€ home/presentation/pages/home_page.dart (istatistikler + debug seed)
+â”‚   â”œâ”€â”€ leaderboard/
+â”‚   â”‚   â”œâ”€â”€ data/repositories/firebase_leaderboard_repository.dart (5 dk cache)
+â”‚   â”‚   â”œâ”€â”€ domain/ (leaderboard_entry, leaderboard_repository interface)
+â”‚   â”‚   â””â”€â”€ presentation/ (leaderboard_providers, leaderboard_page)
 â”‚   â””â”€â”€ profile/presentation/pages/profile_page.dart (placeholder)
 ```
