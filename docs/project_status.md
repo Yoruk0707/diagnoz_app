@@ -1,5 +1,6 @@
 # DiagnozApp - Proje Durumu
-Son Guncelleme: 20 Subat 2026
+**Version:** 1.4
+**Last Updated:** February 20, 2026
 
 ## Tamamlanan Sprintler
 

@@ -1,6 +1,6 @@
 # DiagnozApp: Database Schema
-**Version:** 1.2  
-**Last Updated:** January 30, 2026  
+**Version:** 1.3
+**Last Updated:** February 20, 2026
 **Database:** Cloud Firestore (Firebase)  
 
 > **Purpose:** Canonical data structure definitions for development.  
