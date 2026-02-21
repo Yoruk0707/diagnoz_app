@@ -26,22 +26,42 @@ class FirestoreCaseDatasource {
   FirestoreCaseDatasource({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  /// Firestore cases collection referansı.
+  /// Firestore cases collection referansı (public — correctDiagnosis yok).
   CollectionReference<Map<String, dynamic>> get _casesRef =>
       _firestore.collection('cases');
+
+  /// NEDEN: cases_private — correctDiagnosis + alternativeDiagnoses burada.
+  /// DevTools'ta cases incelendiğinde doğru cevap görünmez.
+  /// Sprint 5 güvenlik taşıması (MVP ara çözümü).
+  CollectionReference<Map<String, dynamic>> get _casesPrivateRef =>
+      _firestore.collection('cases_private');
 
   /// Belirli bir vakayı ID ile getir.
   ///
   /// NEDEN: Test sonucu gösterme ve vaka detayı için tek document okuma.
-  /// Maliyet: 1 read.
+  /// cases + cases_private paralel okunur (maliyet: 2 read).
   Future<MedicalCase> getCaseById(String caseId) async {
-    final doc = await _casesRef.doc(caseId).get();
+    // NEDEN: Paralel fetch — cases + cases_private aynı anda.
+    final results = await Future.wait([
+      _casesRef.doc(caseId).get(),
+      _casesPrivateRef.doc(caseId).get(),
+    ]);
+
+    final doc = results[0];
+    final privateDoc = results[1];
 
     if (!doc.exists) {
       throw Exception('Case not found: $caseId');
     }
 
-    return CaseModel.fromFirestore(doc);
+    final medicalCase = CaseModel.fromFirestore(doc);
+
+    // NEDEN: cases_private'tan correctDiagnosis + alternativeDiagnoses al.
+    if (privateDoc.exists && privateDoc.data() != null) {
+      return CaseModel.enrichWithPrivateData(medicalCase, privateDoc.data()!);
+    }
+
+    return medicalCase;
   }
 
   /// Rastgele vakalar getir — oyun başlangıcında kullanılır.
@@ -91,7 +111,11 @@ class FirestoreCaseDatasource {
     // NEDEN: Client-side shuffle — her oyunda farklı sıralama.
     final cases = snapshot.docs.map(CaseModel.fromFirestore).toList()..shuffle();
 
-    return cases.take(count).toList();
+    final selected = cases.take(count).toList();
+
+    // NEDEN: Sadece seçilen vakalar için cases_private'tan correctDiagnosis al.
+    // Havuzdaki 50 vakanın hepsini okumak gereksiz maliyet (50 yerine 5 read).
+    return _enrichCasesWithPrivateData(selected);
   }
 
   /// Specialty + difficulty ile filtrelenmiş vakaları getir.
@@ -119,7 +143,10 @@ class FirestoreCaseDatasource {
     // Maksimum 20 vaka, daha fazlası için cursor-based pagination gerekir.
     final snapshot = await query.limit(limit).get();
 
-    return snapshot.docs.map(CaseModel.fromFirestore).toList();
+    final cases = snapshot.docs.map(CaseModel.fromFirestore).toList();
+
+    // NEDEN: cases_private'tan correctDiagnosis zenginleştirme.
+    return _enrichCasesWithPrivateData(cases);
   }
 
   /// Birden fazla vakayı ID listesiyle getir.
@@ -146,10 +173,13 @@ class FirestoreCaseDatasource {
       for (final doc in snapshot.docs) doc.id: CaseModel.fromFirestore(doc),
     };
 
-    return caseIds
+    final orderedCases = caseIds
         .where(caseMap.containsKey)
         .map((id) => caseMap[id]!)
         .toList();
+
+    // NEDEN: cases_private'tan correctDiagnosis zenginleştirme.
+    return _enrichCasesWithPrivateData(orderedCases);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -159,35 +189,104 @@ class FirestoreCaseDatasource {
   /// MockCases'taki 5 vakayı Firestore'a batch write ile yükler.
   ///
   /// NEDEN: Sprint 4 geçişi — Firestore'a ilk veri yükleme.
+  /// Sprint 5: Public veri cases'e, private veri cases_private'a yazılır.
   /// Sadece debug modda çağrılır (kDebugMode guard home_page'de).
-  /// Idempotent: Zaten varsa üzerine yazmaz (exists check).
+  /// Idempotent: Her collection bağımsız kontrol edilir.
   /// Document ID'ler: case_001, case_002, ... (mock_cases.dart'taki id'ler).
-  /// Maliyet: 5 read (exists check) + N write (olmayan vakalar).
+  /// Maliyet: 5×2 read (cases + cases_private exists check) + N write.
   Future<int> seedCases() async {
     assert(kDebugMode, 'seedCases() sadece debug modda çağrılmalı');
 
     final batch = _firestore.batch();
-    int addedCount = 0;
+    int publicAdded = 0;
+    int privateAdded = 0;
+    int migrated = 0;
 
     for (final medicalCase in MockCases.allCases) {
+      // NEDEN: cases ve cases_private bağımsız kontrol edilir.
+      // Eski seed'ler sadece cases'e yazdı — cases_private eksik olabilir.
+      // Her iki collection'ı ayrı ayrı kontrol et → migration-safe.
       final docRef = _casesRef.doc(medicalCase.id);
-      final doc = await docRef.get();
+      final privateDocRef = _casesPrivateRef.doc(medicalCase.id);
 
-      // NEDEN: Idempotent — zaten varsa atla, veri kaybını önle.
-      if (doc.exists) continue;
+      final results = await Future.wait([
+        docRef.get(),
+        privateDocRef.get(),
+      ]);
 
-      batch.set(docRef, CaseModel.toFirestore(medicalCase));
-      addedCount++;
+      final publicDoc = results[0];
+      final privateExists = results[1].exists;
+
+      if (!publicDoc.exists) {
+        batch.set(docRef, CaseModel.toFirestore(medicalCase));
+        publicAdded++;
+      } else {
+        // NEDEN: Migration — eski cases doc'larında correctDiagnosis kalmış olabilir.
+        // Security review: cases collection'da doğru cevap kalırsa tüm taşıma boşa gider.
+        // FieldValue.delete() ile sadece o alanlar silinir, diğer veriye dokunulmaz.
+        final data = publicDoc.data();
+        if (data != null && data.containsKey('correctDiagnosis')) {
+          batch.update(docRef, {
+            'correctDiagnosis': FieldValue.delete(),
+            'alternativeDiagnoses': FieldValue.delete(),
+          });
+          migrated++;
+        }
+      }
+
+      if (!privateExists) {
+        batch.set(privateDocRef, CaseModel.toFirestorePrivate(medicalCase));
+        privateAdded++;
+      }
     }
 
-    if (addedCount > 0) {
+    if (publicAdded > 0 || privateAdded > 0 || migrated > 0) {
       await batch.commit();
     }
 
-    debugPrint('Seed: $addedCount vaka eklendi, '
-        '${MockCases.allCases.length - addedCount} zaten vardı.');
+    debugPrint('Seed: cases=$publicAdded eklendi, '
+        'cases_private=$privateAdded eklendi, '
+        'migrated=$migrated (correctDiagnosis silindi), '
+        '${MockCases.allCases.length} toplam vaka.');
 
-    return addedCount;
+    return publicAdded + privateAdded + migrated;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PRIVATE DATA ENRICHMENT
+  // ═══════════════════════════════════════════════════════════════
+
+  /// cases_private'tan correctDiagnosis + alternativeDiagnoses alıp
+  /// MedicalCase listesine birleştirir.
+  ///
+  /// NEDEN: cases collection'da correctDiagnosis yok (Sprint 5 güvenlik).
+  /// Firestore rules cases_private'ta list=false → whereIn query YASAK.
+  /// Tek tek get ile paralel fetch yapılır (Future.wait).
+  /// Maliyet: N read (casesPerGame=5 → 5 paralel get).
+  Future<List<MedicalCase>> _enrichCasesWithPrivateData(
+    List<MedicalCase> cases,
+  ) async {
+    if (cases.isEmpty) return cases;
+
+    // NEDEN: cases_private'ta list=false (security review).
+    // whereIn = list query → permission-denied olur.
+    // Tek tek doc.get() ile paralel fetch — güvenli ve hızlı.
+    final privateDocs = await Future.wait(
+      cases.map((c) => _casesPrivateRef.doc(c.id).get()),
+    );
+
+    final privateMap = {
+      for (final doc in privateDocs)
+        if (doc.exists && doc.data() != null) doc.id: doc.data()!,
+    };
+
+    return cases.map((medicalCase) {
+      final privateData = privateMap[medicalCase.id];
+      if (privateData != null) {
+        return CaseModel.enrichWithPrivateData(medicalCase, privateData);
+      }
+      return medicalCase;
+    }).toList();
   }
 
   // ═══════════════════════════════════════════════════════════════

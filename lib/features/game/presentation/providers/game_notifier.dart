@@ -7,6 +7,11 @@
 // Sprint 4 güncellemesi: Oyun bitince Firestore'a atomic batch write.
 // SubmitGameUsecase ile skor kaydedilir (game + user stats + leaderboard).
 //
+// Sprint 5: correctDiagnosis artık cases_private koleksiyonundan geliyor.
+// startGame → getCases → _enrichCasesWithPrivateData zinciri ile
+// MedicalCase entity'ye dolduruluyor. Bu notifier değişmedi —
+// tanı doğrulama hâlâ currentCase.correctDiagnosis üzerinden yapılıyor.
+//
 // Referans: auth_notifier.dart pattern'ı
 //           vcguide.md § Timer System (dispose cleanup)
 //           vcguide.md § Edge Case 3 (test time cost)

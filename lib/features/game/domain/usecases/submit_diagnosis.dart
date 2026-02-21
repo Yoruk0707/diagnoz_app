@@ -65,6 +65,9 @@ class SubmitDiagnosis {
     }
 
     // NEDEN: Tanı karşılaştırma — case insensitive, trim.
+    // Sprint 5: correctDiagnosis artık cases_private koleksiyonundan geliyor.
+    // getCases() → _enrichCasesWithPrivateData() zinciri ile entity'ye dolduruluyor.
+    // DevTools'ta cases incelendiğinde doğru cevap görünmez.
     final isCorrect = _matchDiagnosis(
       userDiagnosis: diagnosis,
       correctDiagnosis: currentCase.correctDiagnosis,

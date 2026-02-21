@@ -95,10 +95,24 @@ service cloud.firestore {
     // ─── cases/{caseId} ───
     // NEDEN: Vakalar sadece auth kullanıcılar okuyabilir (scraping azaltma).
     // Write tamamen kapalı — sadece admin Cloud Functions ile ekler.
-    // TODO Sprint 5: correctDiagnosis alanını cases_private koleksiyonuna taşı.
-    // Şu an client correctDiagnosis'i görebilir — Sprint 5'te ayrı koleksiyon.
+    // correctDiagnosis bu koleksiyonda YOKTUR — cases_private'ta saklanır.
     match /cases/{caseId} {
       allow read: if isAuth();
+      allow write: if false;
+    }
+
+    // ─── cases_private/{caseId} ───
+    // NEDEN: correctDiagnosis + alternativeDiagnoses burada saklanır.
+    // DevTools ile cases koleksiyonunu inceleyen öğrenci doğru cevabı göremez.
+    // get-only: Tek tek document okuma izni — toplu query (list) KAPALI.
+    // NEDEN: list açık olursa auth kullanıcı tüm cases_private'ı whereIn/query
+    // ile toplu çekip tüm doğru cevapları görebilir. get-only ile sadece
+    // bildiği caseId'yi tek tek okuyabilir.
+    // Write kapalı — sadece seed/Cloud Functions.
+    // Tam güvenlik ileride Cloud Function ile sağlanacak — bu MVP ara çözümü.
+    match /cases_private/{caseId} {
+      allow get: if isAuth();
+      allow list: if false;
       allow write: if false;
     }
 

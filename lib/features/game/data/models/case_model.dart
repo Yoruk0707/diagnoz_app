@@ -37,7 +37,10 @@ class CaseModel {
       physicalExam: _parseStringMap(data['physicalExam']),
       availableTests: _parseAvailableTests(data['availableTests']),
       testResults: _parseTestResults(data['testResults']),
-      correctDiagnosis: data['correctDiagnosis'] as String,
+      // NEDEN: cases collection'da correctDiagnosis artık yok (Sprint 5 güvenlik).
+      // cases_private'tan enrichWithPrivateData() ile doldurulur.
+      // Geriye uyumluluk: eski seed'li dökümanlar hâlâ bu alana sahip olabilir.
+      correctDiagnosis: data['correctDiagnosis'] as String? ?? '',
       alternativeDiagnoses: _parseStringList(data['alternativeDiagnoses']),
       explanation: data['explanation'] as String? ?? '',
       keyFindings: _parseStringList(data['keyFindings']),
@@ -70,8 +73,9 @@ class CaseModel {
         'physicalExam': medicalCase.physicalExam,
       'availableTests': _availableTestsToFirestore(medicalCase.availableTests),
       'testResults': _testResultsToFirestore(medicalCase.testResults),
-      'correctDiagnosis': medicalCase.correctDiagnosis,
-      'alternativeDiagnoses': medicalCase.alternativeDiagnoses,
+      // NEDEN: correctDiagnosis + alternativeDiagnoses cases collection'a YAZILMAZ.
+      // Sprint 5 güvenlik: Bu veriler cases_private koleksiyonunda saklanır.
+      // DevTools'ta cases incelendiğinde doğru cevap görünmez.
       'explanation': medicalCase.explanation,
       'keyFindings': medicalCase.keyFindings,
       // NEDEN: analytics alanı sıfırdan başlar, Cloud Functions günceller.
@@ -82,6 +86,48 @@ class CaseModel {
         'mostRequestedTest': '',
       },
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PRIVATE DATA (cases_private collection)
+  // ═══════════════════════════════════════════════════════════════
+
+  /// MedicalCase → cases_private document Map.
+  ///
+  /// NEDEN: Seed ve Cloud Functions cases_private'a bu veriyi yazar.
+  /// Sadece correctDiagnosis + alternativeDiagnoses — minimum veri prensibi.
+  static Map<String, dynamic> toFirestorePrivate(MedicalCase medicalCase) {
+    return {
+      'correctDiagnosis': medicalCase.correctDiagnosis,
+      'alternativeDiagnoses': medicalCase.alternativeDiagnoses,
+    };
+  }
+
+  /// cases_private verisini MedicalCase entity'ye birleştir.
+  ///
+  /// NEDEN: cases collection'dan gelen entity'de correctDiagnosis boş.
+  /// cases_private'tan okunan veri ile zenginleştirilir.
+  /// Yeni MedicalCase döner (immutable pattern).
+  static MedicalCase enrichWithPrivateData(
+    MedicalCase base,
+    Map<String, dynamic> privateData,
+  ) {
+    return MedicalCase(
+      id: base.id,
+      specialty: base.specialty,
+      difficulty: base.difficulty,
+      patientProfile: base.patientProfile,
+      vitals: base.vitals,
+      history: base.history,
+      physicalExam: base.physicalExam,
+      availableTests: base.availableTests,
+      testResults: base.testResults,
+      correctDiagnosis: privateData['correctDiagnosis'] as String? ?? '',
+      alternativeDiagnoses:
+          _parseStringList(privateData['alternativeDiagnoses']),
+      explanation: base.explanation,
+      keyFindings: base.keyFindings,
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
