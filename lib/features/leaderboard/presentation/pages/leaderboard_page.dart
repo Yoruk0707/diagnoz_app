@@ -31,10 +31,14 @@ class LeaderboardPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedPeriod = ref.watch(selectedPeriodProvider);
 
-    // NEDEN: Seçili periyoda göre doğru provider'ı watch et.
+    // NEDEN: Her iki provider'ı da watch et — sayfa açılışında ikisi de
+    // yüklensin, tab geçişi anında data hazır olsun.
+    final weeklyAsync = ref.watch(weeklyLeaderboardProvider);
+    final monthlyAsync = ref.watch(monthlyLeaderboardProvider);
+
     final leaderboardAsync = selectedPeriod == LeaderboardPeriod.weekly
-        ? ref.watch(weeklyLeaderboardProvider)
-        : ref.watch(monthlyLeaderboardProvider);
+        ? weeklyAsync
+        : monthlyAsync;
 
     final userRankAsync = ref.watch(currentUserRankProvider);
 
@@ -97,6 +101,16 @@ class LeaderboardPage extends ConsumerWidget {
         onSelectionChanged: (newSelection) {
           ref.read(selectedPeriodProvider.notifier).state =
               newSelection.first;
+
+          // NEDEN: autoDispose provider tab switch'te stale kalıyor,
+          // invalidate ile fresh fetch zorlanıyor.
+          // keepAlive 5 dk cache tutuyor — invalidate olmadan eski data döner.
+          if (newSelection.first == LeaderboardPeriod.weekly) {
+            ref.invalidate(weeklyLeaderboardProvider);
+          } else {
+            ref.invalidate(monthlyLeaderboardProvider);
+          }
+          ref.invalidate(currentUserRankProvider);
         },
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith((states) {
