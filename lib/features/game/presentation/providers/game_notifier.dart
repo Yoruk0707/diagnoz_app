@@ -182,6 +182,7 @@ class GameNotifier extends StateNotifier<GameState> {
         score: 0.0,
         correctDiagnosis: session.currentCase?.correctDiagnosis ?? '',
         userDiagnosis: '',
+        difficulty: session.currentCase?.difficulty ?? CaseDifficulty.easy,
       );
     }
   }
@@ -289,6 +290,7 @@ class GameNotifier extends StateNotifier<GameState> {
               score: diagnosisResult.score,
               correctDiagnosis: diagnosisResult.correctDiagnosis,
               userDiagnosis: diagnosis,
+              difficulty: currentState.currentCase?.difficulty ?? CaseDifficulty.easy,
             );
           }
         },

@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../entities/game_session.dart';
+import '../entities/medical_case.dart';
 import '../../data/repositories/firebase_game_repository.dart';
 
 /// Tamamlanmış oyunu Firestore'a kaydetme use case.
@@ -170,14 +171,23 @@ class SubmitGameUsecase {
 
     // ─── 9. Skor recompute validation ───
     // NEDEN: Client gönderdiği score'u bağımsızca doğrula.
-    // Doğru cevap: (timeLeft / 100) * 10, clamp(0, 12).
+    // Doğru cevap: (timeLeft / 100) * 10 * zorlukÇarpanı.
     // Yanlış cevap veya timeout (diagnosis null): expectedScore = 0.
     // 0.01 tolerans: floating point aritmetik farkları.
+    // Zorluk çarpanı session.cases'ten caseId eşleşmesiyle alınır.
     for (final result in session.caseResults) {
       final double expectedScore;
       if (result.isCorrect) {
+        // NEDEN: CaseId → difficulty eşleşmesi — session.cases'ten al.
+        final matchingCase = session.cases.cast<MedicalCase?>().firstWhere(
+          (c) => c!.id == result.caseId,
+          orElse: () => null,
+        );
+        final multiplier = matchingCase != null
+            ? CaseResult.difficultyMultiplier(matchingCase.difficulty)
+            : 1.0; // NEDEN: Fallback — vaka bulunamazsa base multiplier.
         expectedScore =
-            ((result.timeLeft / 100) * 10).clamp(0.0, 12.0);
+            ((result.timeLeft / 100) * 10 * multiplier).clamp(0.0, 18.0);
       } else {
         expectedScore = 0.0;
       }

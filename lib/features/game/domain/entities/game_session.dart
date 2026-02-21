@@ -46,13 +46,28 @@ class CaseResult extends Equatable {
     this.score = 0.0,
   });
 
-  /// NEDEN: Skor formülü masterplan.md'den: (timeLeft / 100) * 10
-  /// 120s = 12.0 puan (max), 0s = 0.0 puan.
+  /// NEDEN: Skor formülü: (timeLeft / 100) * 10 * zorlukÇarpanı.
+  /// easy=1.0×, medium=1.25×, hard=1.5× — zor vakalar daha fazla puan.
+  /// 120s + hard = 18.0 puan (max), 0s = 0.0 puan.
   /// vcguide.md § Edge Case 2: negatif ve overflow koruması.
-  static double calculateScore(int timeLeft) {
+  static double calculateScore(int timeLeft, CaseDifficulty difficulty) {
     if (timeLeft <= 0) return 0.0;
-    if (timeLeft > 120) return 12.0; // NEDEN: Manipülasyon koruması
-    return (timeLeft / 100) * 10;
+    if (timeLeft > 120) timeLeft = 120; // NEDEN: Manipülasyon koruması
+    final multiplier = difficultyMultiplier(difficulty);
+    return (timeLeft / 100) * 10 * multiplier;
+  }
+
+  /// NEDEN: CaseDifficulty → çarpan değeri. Tek kaynak (DRY).
+  /// app_constants.dart'taki sabitlerle tutarlı.
+  static double difficultyMultiplier(CaseDifficulty difficulty) {
+    switch (difficulty) {
+      case CaseDifficulty.easy:
+        return 1.0;
+      case CaseDifficulty.medium:
+        return 1.25;
+      case CaseDifficulty.hard:
+        return 1.5;
+    }
   }
 
   /// Yeni test eklenerek güncelleme — immutable pattern.

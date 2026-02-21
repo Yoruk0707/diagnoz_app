@@ -104,17 +104,20 @@ abstract class InputValidator {
 
   /// Skor hesapla ve doğrula.
   ///
-  /// Formül: (timeLeft / 100) * 10
-  /// Max: 12.0 (120s kaldığında)
+  /// Formül: (timeLeft / 100) * 10 * zorlukÇarpanı
+  /// Max: 18.0 (120s kaldığında, hard vaka)
   /// Referans: masterplan.md § Scoring
-  static double calculateScore(int timeLeft) {
+  ///
+  /// NEDEN: [difficultyMultiplier] varsayılan 1.0 (easy).
+  /// Caller zorluk çarpanını CaseResult.difficultyMultiplier ile alır.
+  static double calculateScore(int timeLeft, {double difficultyMultiplier = 1.0}) {
     final validTime = validateTimeLeft(timeLeft);
     if (validTime == null) return 0.0;
 
-    final rawScore = (validTime / 100) * 10;
+    final rawScore = (validTime / 100) * 10 * difficultyMultiplier;
 
     // NEDEN: Defensive clamping — formula dışı değer imkansız ama güvenlik katmanı.
-    return rawScore.clamp(0.0, 12.0);
+    return rawScore.clamp(0.0, 18.0);
   }
 
   // ─────────────────────────────────────────────────────────────

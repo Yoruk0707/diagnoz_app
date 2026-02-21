@@ -71,12 +71,14 @@ class GamePlaying extends GameState {
 ///
 /// NEDEN: Sonuç ekranı 2-3 saniye gösterilir, sonra
 /// sonraki vakaya geçilir veya oyun biter.
+/// [difficulty] UI'da zorluk çarpanını göstermek için.
 class GameCaseResult extends GameState {
   final GameSession session;
   final bool isCorrect;
   final double score;
   final String correctDiagnosis;
   final String userDiagnosis;
+  final CaseDifficulty difficulty;
 
   const GameCaseResult({
     required this.session,
@@ -84,10 +86,11 @@ class GameCaseResult extends GameState {
     required this.score,
     required this.correctDiagnosis,
     required this.userDiagnosis,
+    required this.difficulty,
   });
 
   @override
-  List<Object?> get props => [session, isCorrect, score];
+  List<Object?> get props => [session, isCorrect, score, difficulty];
 }
 
 /// Oyun bitti — final skor gösteriliyor.

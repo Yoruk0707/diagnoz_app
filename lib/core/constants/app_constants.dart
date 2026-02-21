@@ -35,16 +35,30 @@ abstract class AppConstants {
   static const int casesPerGame = 5;
 
   // ═══════════════════════════════════════════════════════════════
+  // DIFFICULTY MULTIPLIERS (masterplan.md § Scoring)
+  // ═══════════════════════════════════════════════════════════════
+
+  /// NEDEN: Zor vakalar daha fazla puan verir — stratejik vaka seçimi.
+  /// Formül: skor = (kalanSüre / 100) × 10 × zorlukÇarpanı
+  static const double difficultyMultiplierEasy = 1.0;
+  static const double difficultyMultiplierMedium = 1.25;
+  static const double difficultyMultiplierHard = 1.5;
+
+  // ═══════════════════════════════════════════════════════════════
   // SCORE BOUNDS (vcguide.md § Edge Case 2)
   // ═══════════════════════════════════════════════════════════════
 
-  /// Vaka başına maksimum puan: (120/100) * 10 = 12.0
-  static const double maxScorePerCase = 12.0;
+  /// Vaka başına baz puan (çarpan öncesi): (120/100) * 10 = 12.0
+  static const double baseMaxScorePerCase = 12.0;
+
+  /// Vaka başına maksimum puan (hard çarpanıyla): 12.0 * 1.5 = 18.0
+  static const double maxScorePerCase = 18.0;
 
   /// Vaka başına minimum puan.
   static const double minScorePerCase = 0.0;
 
-  /// Oyun başına maksimum toplam puan: 5 * 12.0 = 60.0
+  /// Oyun başına maksimum toplam puan: 5 * 18.0 = 90.0
+  /// NEDEN: Teorik max — tüm vakalar hard ve tam sürede doğru.
   static const double maxTotalScore = casesPerGame * maxScorePerCase;
 
   // ═══════════════════════════════════════════════════════════════

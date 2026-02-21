@@ -148,8 +148,8 @@ class CaseResultModel {
       'timeSpent': result.timeSpent,
       'timeLeft': result.timeLeft,
       // NEDEN: Score validation — vcguide.md § Edge Case 2.
-      // Client'tan gelen skor 0-12 aralığında olmalı.
-      'score': result.score.clamp(0.0, 12.0),
+      // Client'tan gelen skor 0-18 aralığında olmalı (hard=1.5× → max 18.0).
+      'score': result.score.clamp(0.0, 18.0),
     };
   }
 

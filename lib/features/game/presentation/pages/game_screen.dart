@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/game_session.dart';
+import '../../domain/entities/medical_case.dart';
 import '../providers/game_providers.dart';
 import '../providers/game_state.dart';
 import '../widgets/case_card_widget.dart';
@@ -521,6 +522,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              // NEDEN: Zorluk çarpanını göster — oyuncuya skor kaynağını açıkla.
+              if (state.difficulty != CaseDifficulty.easy) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '${_getDifficultyLabel(state.difficulty)} çarpanı: ×${CaseResult.difficultyMultiplier(state.difficulty).toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ],
             const SizedBox(height: 32),
             SizedBox(
@@ -675,5 +687,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         ),
       ),
     );
+  }
+
+  /// NEDEN: Zorluk seviyesi Türkçe label — case result ekranında gösterilir.
+  String _getDifficultyLabel(CaseDifficulty difficulty) {
+    switch (difficulty) {
+      case CaseDifficulty.easy:
+        return 'Kolay';
+      case CaseDifficulty.medium:
+        return 'Orta';
+      case CaseDifficulty.hard:
+        return 'Zor';
+    }
   }
 }

@@ -85,11 +85,12 @@ service cloud.firestore {
         && isValidGameFields();
       // NEDEN: batch.set() existing doc üzerine yazınca update permission gerekir.
       // submitGame atomic batch write'ında in_progress → completed güncellenir.
+      // totalScore max 90: zorluk çarpanıyla (hard=1.5×) 5 vaka × 18.0 = 90.0.
       allow update: if isAuth()
         && isOwner(resource.data.userId)
         && isValidGameFields()
         && request.resource.data.totalScore >= 0
-        && request.resource.data.totalScore <= 60;
+        && request.resource.data.totalScore <= 90;
       allow delete: if false;
     }
 

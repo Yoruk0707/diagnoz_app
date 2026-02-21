@@ -75,8 +75,11 @@ class SubmitDiagnosis {
     );
 
     // NEDEN: Skor hesaplama — CaseResult.calculateScore kullanır.
+    // Zorluk çarpanı: easy=1.0×, medium=1.25×, hard=1.5×.
     // vcguide.md § Edge Case 2: negatif/overflow koruması içeride.
-    final score = isCorrect ? CaseResult.calculateScore(timeLeft) : 0.0;
+    final score = isCorrect
+        ? CaseResult.calculateScore(timeLeft, currentCase.difficulty)
+        : 0.0;
 
     final caseResult = CaseResult(
       caseId: currentCase.id,
