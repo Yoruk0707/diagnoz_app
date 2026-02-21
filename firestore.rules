@@ -58,13 +58,14 @@ service cloud.firestore {
     }
 
     // ─── users/{userId} ───
-    // NEDEN: get = auth (tek profil okuma, leaderboard'da displayName için).
+    // NEDEN: PII koruması — kullanıcı sadece KENDİ profilini okuyabilir.
+    // Leaderboard displayName denormalize edilmiş (leaderboard collection'da).
+    // Başka kullanıcının phoneNumber, university, stats bilgisi gizli.
     // list = false (tüm kullanıcıları listeleme engeli — enumeration koruması).
-    // Anonim scraping engellenir: isAuth() ile.
     // Field allowlist: isValidUserFields() ile bilinmeyen field yazılamaz.
     // Delete kapalı — hesap silme Cloud Functions'dan yapılır.
     match /users/{userId} {
-      allow get: if isAuth();
+      allow get: if isAuth() && isOwner(userId);
       allow list: if false;
       allow create: if isAuth() && isOwner(userId) && isValidUserFields();
       allow update: if isAuth() && isOwner(userId) && isValidUserFields();
